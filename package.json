@@ -1,0 +1,24 @@
+{
+  "name": "jsm",
+  "version": "1.0.0",
+  "description": "Simple project example using the ES6 modules of three.js.",
+  "main": "index.js",
+  "scripts": {
+    "build": "rollup -c \"rollup_config.js\"",
+    "start": "serve"
+  },
+  "author": "HABANOZ",
+  "license": "LGPL-3.0-or-later",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "stats-js": "^1.0.1",
+    "three": "^0.137.5"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^22.0.0",
+    "@rollup/plugin-node-resolve": "13.1.3",
+    "rollup": "^2.75.1",
+    "rollup-plugin-terser": "7.0.2",
+    "serve": "13.0.2"
+  }
+}
