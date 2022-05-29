@@ -46420,20 +46420,259 @@
 
 	var Stats = stats_min.exports;
 
-	let camera, scene, renderer, stats;
+	class MapBuilderBase {
+	    constructor() {
+	        if (new.target === MapBuilderBase) {
+	            throw new TypeError("Cannot construct Abstract instances directly");
+	        }
+	    }
+
+	    render(){
+	        console.log("Abstract render: Not expected");
+	    }
+
+	    findVisible(tile, zoom, level, viewRect, visibleTiles){
+	        console.log("Abstract findVisible: Not expected");
+	    }
+	}
+
+	class ResourceLoader {
+	    static loader = new TextureLoader();
+	    
+	    static loadSat(aTile, onLoad, onFail) {
+	        const x = aTile.x;
+	        const y = aTile.y;
+	        const z = aTile.zoom;
+
+	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	    }
+
+	    static loadTex(fileName){
+	        return ResourceLoader.loader.load('images/'+fileName);
+	    }
+	}
+
+	function zoomToNTiles(zoom) {
+	    return 2 ** (zoom);
+	}
+
+	class AppConfiguration {
+	    maxZoom = 13;
+	    sceneWidth = 2_000_000;
+	    sceneWidthHalf = this.sceneWidth / 2;
+	    sceneHeight = 2_000_000;
+	    sceneHeightHalf = this.sceneHeight / 2;
+
+	    tileDimension = 256;
+
+	    initialElevation = 4_000_000;
+	    cameraMaxDist = this.initialElevation;
+	    cameraMinDist = 200;
+	    bumpScale = 100.0;
+	    groundElevation = -30;
+	    zoomColorMap = { 0: '#ff0000', 1: '#ff8000', 2: '#ffff00', 3: '#80ff00', 4: '#00ff00', 5: '#00ff80', 6: '#00ffff', 7: '#0080ff', 8: '#0000ff', 9: '#8000ff', 10: '#ff00ff', 11: '#ff0080', 12: '#ffbf00', 13: '#bfff00', 14: '#40ff00', 15: '#00ff40', 16: '00ffbf', 17: '#00bfff', 18: '	#0040ff', 19: '#4000ff', 20: '#bf00ff', 21: '#ff00bf', 22: '#ff0040', 23: 'black' };
+	}
+	const appConfiguration = new AppConfiguration();
+
+	class MapBuilder2D extends MapBuilderBase {
+	    constructor(defaultTex, mapBuilder) {
+	        super();
+	        this.defaultTex = defaultTex;
+	        this.mapBuilder = mapBuilder;
+	        this.tileGeometries = [];
+
+	        for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
+	            const nTiles = zoomToNTiles(zoom);
+
+	            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
+	        }
+	    }
+
+	    findVisible(tile, zoom, level, viewRect, visibleTiles) {
+	        const box = new Box3().copy(tile.box);
+
+	        if (!viewRect.intersectsBox(box)) {
+	            return;
+	        }
+
+	        if (level >= zoom) {
+	            visibleTiles.push(tile);
+	        } else {
+	            if (tile.children == null) {
+	                tile.split();
+	            }
+
+	            if (tile.children.length == 0) {
+	                visibleTiles.push(tile);
+	            } else {
+	                for (const child of tile.children) {
+	                    this.findVisible(child, zoom, level + 1, viewRect, visibleTiles);
+	                }
+	            }
+	        }
+	    }
+
+	    buildMat(aTile) {
+	        const mat2d = new MeshBasicMaterial({
+	            map: this.defaultTex,
+	        });
+	        ResourceLoader.loadSat(
+	            aTile,
+	            function (texture) {
+	                mat2d.map = texture;
+	                //self.mapBuilder.triggerRender();
+	            },
+	            undefined
+	        );
+
+	        return mat2d;
+	    }
+
+	    buildMesh(tile) {
+	        const gridPlaneGeometry = this.tileGeometries[tile.zoom];
+	        const planeGrid = new Mesh(gridPlaneGeometry, this.buildMat(tile));
+
+	        planeGrid.position.x = tile.centerX;
+	        planeGrid.position.y = tile.centerY;
+
+	        planeGrid.visible = false;
+
+	        return planeGrid;
+	    }
+	}
+
+	class ATile {
+	    constructor(left, bottom, width, height, zoom) {
+	        this.left = left;
+	        this.bottom = bottom;
+
+	        this.centerX = left + width / 2;
+	        this.centerY = bottom + height / 2;
+
+	        this.width = width;
+	        this.height = height;
+
+	        this.box = new Box3();
+	        this.box.setFromCenterAndSize(new Vector3(this.centerX, this.centerY, 0), new Vector3(width, height, 0));
+
+	        this.zoom = zoom;
+
+	        this.plane = null;
+	        this.showBorder = false;
+
+	        this.children = null;
+	        this.renderMode = 0;
+
+	        const nTiles = zoomToNTiles(this.zoom);
+	        const tileWidth = appConfiguration.sceneWidth / nTiles;
+	        const tileHeight = appConfiguration.sceneHeight / nTiles;
+
+
+	        this.x = Math.floor((this.left + appConfiguration.sceneWidthHalf) / tileWidth);
+	        this.y = Math.floor((this.bottom + appConfiguration.sceneHeightHalf) / tileHeight);
+
+	    }
+
+	    show() {
+	        // this.plane.frustumCulled = false;
+	        this.plane.visible = true;
+	    }
+
+	    hide() {
+	        // this.plane.frustumCulled = true;
+	        if ( this.plane != null){
+	            this.plane.visible = false;
+	        }
+	        
+	    }
+
+	    split() {
+	        if (this.zoom == appConfiguration.maxZoom) {
+	            this.children = [];
+	            return;
+	        }
+
+	        const halfWidth = this.width / 2;
+	        const halfHeight = this.height / 2;
+
+	        const tile00 = new ATile(this.left/*		*/, this.bottom/*		  */, halfWidth, halfHeight, this.zoom + 1);
+	        const tile01 = new ATile(this.left + halfWidth, this.bottom/*		  */, halfWidth, halfHeight, this.zoom + 1);
+	        const tile10 = new ATile(this.left/*		*/, this.bottom + halfHeight, halfWidth, halfHeight, this.zoom + 1);
+	        const tile11 = new ATile(this.left + halfWidth, this.bottom + halfHeight, halfWidth, halfHeight, this.zoom + 1);
+
+	        this.children = [tile00, tile01, tile10, tile11];
+	    }
+	}
+
+	class MapCanvas {
+	    constructor(scene, camera, controls) {
+	        this.dirty = false;
+	        this.visibleTiles = [];
+	        this.mapBuilder = null;
+	        this.frustum = new Frustum();
+	        this.ground = new Group();
+
+	        this.scene = scene;
+	        this.camera = camera;
+	        this.controls = controls;
+	        this.rootTile = null;
+	        this.defaultTex = null;
+	    }
+
+	    build() {
+	        this.defaultTex = ResourceLoader.loadTex('water512.jpg');
+	        this.mapBuilder = new MapBuilder2D(this.defaultTex, null);
+
+	        this.scene.add(this.ground);
+
+	        this.rootTile = new ATile(-appConfiguration.sceneWidthHalf, -appConfiguration.sceneHeightHalf, appConfiguration.sceneWidth, appConfiguration.sceneHeight, 0);
+	    }
+
+	    render() {
+	        // if (!this.dirty) return;
+
+	        this.visibleTiles.forEach(tile => tile.hide());
+	        this.visibleTiles = [];
+
+	        const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
+	        this.frustum.setFromProjectionMatrix(matrix);
+
+	        this.mapBuilder.findVisible(this.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
+
+	        this.visibleTiles.forEach(tile => {
+	            if (tile.plane == null) {
+	                tile.plane = this.mapBuilder.buildMesh(tile);
+	                this.ground.add(tile.plane);
+	            }
+	        });
+	        this.visibleTiles.forEach(tile => tile.show());
+
+	        this.dirty = false;
+	    }
+
+	    triggerRender() {
+	        this.dirty = true;
+	    }
+
+	    setRenderer(renderer) {
+	        this.mapBuilder = renderer;
+	    }
+	}
+
+	let camera, scene, renderer, controls, stats, mapCanvas;
 
 	class App {
 
 		init() {
 
-			camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
-			camera.position.z = 4;
-
+			camera = new PerspectiveCamera(65, window.innerWidth / window.innerHeight, appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
+			camera.up = new Vector3(0, 0, 1);
+			camera.position.set(0, 0, appConfiguration.initialElevation);
+			
 			new GUI$1();
 			scene = new Scene();
 
 			stats = new Stats();
-			//stats.showPanel(1); // 0: fps, 1: ms, 2: mb, 3+: custom
 			document.body.appendChild(stats.dom);
 
 			const geometry = new BoxGeometry();
@@ -46449,11 +46688,20 @@
 
 			window.addEventListener('resize', onWindowResize, false);
 
-			new OrbitControls(camera, renderer.domElement);
-			//controls.addEventListener('change', render);
+			controls = new MapControls(camera, renderer.domElement, appConfiguration.maxZoom);
+			controls.target.copy(new Vector3(camera.position.x, camera.position.y, 0));
+			controls.zoomSpeed = 13.5;
+			
+			controls.minDistance = appConfiguration.cameraMinDist; 
+			controls.maxDistance = appConfiguration.cameraMaxDist;
+
+			controls.addEventListener('change', render);
+
+			mapCanvas = new MapCanvas(scene, camera, controls);
+			mapCanvas.build();
+			mapCanvas.triggerRender();
 
 			animate();
-
 		}
 
 	}
@@ -46464,15 +46712,21 @@
 		camera.updateProjectionMatrix();
 
 		renderer.setSize(window.innerWidth, window.innerHeight);
-
 	}
 
 	function animate() {
 
 		requestAnimationFrame(animate);
-		renderer.render(scene, camera);
-		stats.update();
 
+		controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+		render();
+
+		stats.update();
+	}
+
+	function render() {
+		mapCanvas.render();
+		renderer.render(scene, camera);
 	}
 
 	const app = new App();

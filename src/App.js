@@ -1,22 +1,24 @@
 import * as THREE from 'three';
 import { GUI } from 'dat.gui';
-import { OrbitControls } from './controls/StagedZoomOrbitControl';
+import { MapControls } from './controls/StagedZoomOrbitControl';
 import Stats from 'stats-js';
+import MapCanvas from './MapCanvas';
+import appConfiguration from './utils/AppConfiguration';
 
-let camera, scene, renderer, stats;
+let camera, scene, renderer, controls, stats, mapCanvas;
 
 class App {
 
 	init() {
 
-		camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
-		camera.position.z = 4;
-
+		camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
+		camera.up = new THREE.Vector3(0, 0, 1);
+		camera.position.set(0, 0, appConfiguration.initialElevation);
+		
 		const gui = new GUI();
 		scene = new THREE.Scene();
 
 		stats = new Stats();
-		//stats.showPanel(1); // 0: fps, 1: ms, 2: mb, 3+: custom
 		document.body.appendChild(stats.dom);
 
 		const geometry = new THREE.BoxGeometry();
@@ -32,11 +34,20 @@ class App {
 
 		window.addEventListener('resize', onWindowResize, false);
 
-		const controls = new OrbitControls(camera, renderer.domElement);
-		//controls.addEventListener('change', render);
+		controls = new MapControls(camera, renderer.domElement, appConfiguration.maxZoom);
+		controls.target.copy(new THREE.Vector3(camera.position.x, camera.position.y, 0));
+		controls.zoomSpeed = 13.5;
+		
+		controls.minDistance = appConfiguration.cameraMinDist; 
+		controls.maxDistance = appConfiguration.cameraMaxDist;
+
+		controls.addEventListener('change', render);
+
+		mapCanvas = new MapCanvas(scene, camera, controls);
+		mapCanvas.build();
+		mapCanvas.triggerRender();
 
 		animate();
-
 	}
 
 }
@@ -47,15 +58,21 @@ function onWindowResize() {
 	camera.updateProjectionMatrix();
 
 	renderer.setSize(window.innerWidth, window.innerHeight);
-
 }
 
 function animate() {
 
 	requestAnimationFrame(animate);
-	renderer.render(scene, camera);
-	stats.update();
 
+	controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+	render();
+
+	stats.update();
+}
+
+function render() {
+	mapCanvas.render();
+	renderer.render(scene, camera);
 }
 
 export default App;
