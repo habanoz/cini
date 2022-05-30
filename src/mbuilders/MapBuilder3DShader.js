@@ -2,25 +2,31 @@ import MapBuilderBase from './MapBuilderBase';
 import ResourceLoader from '../loaders/ResourceLoader';
 import { zoomToNTiles } from '../utils/TilingUtils';
 import appConfiguration from '../utils/AppConfiguration';
-import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
+import { ShaderMaterial, Mesh, PlaneGeometry, Box3, FileLoader } from 'three';
+import heightVertShader from './shaders/heightVert';
+import textureFragShader from './shaders/textureFrag';
+import textureHeightShader from './shaders/heightFrag';
 
-class MapBuilder2D extends MapBuilderBase {
+class MapBuilder3DShader extends MapBuilderBase {
     constructor(defaultTex, mapBuilder, controls) {
         super();
         this.defaultTex = defaultTex;
         this.mapBuilder = mapBuilder;
-        this.tileGeometries = [];
         this.controls = controls;
+        this.fileLoader = new FileLoader();
+        this.noBumpTex = ResourceLoader.loadTex('black.jpg');
 
+        this.tileGeometries = [];
         for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
             const nTiles = zoomToNTiles(zoom);
+            const segments = appConfiguration.tileDimension - 1;
 
-            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
+            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, segments, segments));
         }
     }
 
-    switch(){
-        this.controls.maxPolarAngle = 0;
+    switch() {
+        this.controls.maxPolarAngle = 90;
     }
 
     findVisible(tile, zoom, level, viewRect, visibleTiles) {
@@ -48,16 +54,33 @@ class MapBuilder2D extends MapBuilderBase {
     }
 
     buildMat(aTile) {
-        const mat2d = new MeshBasicMaterial({
-            map: this.defaultTex,
-        });
-        let self = this;
+
+        const uniforms = {
+            bumpScale: { type: "f", value: appConfiguration.bumpScale },
+            bumpTexture: { type: "t", value: this.noBumpTex },
+            satTexture: { type: "t", value: this.defaultTex }
+        };
+
+        const mat2d = new ShaderMaterial(
+            {
+                uniforms: uniforms,
+                vertexShader: heightVertShader,
+                fragmentShader: textureHeightShader
+            }
+        );
+
         ResourceLoader.loadSat(
             aTile,
             function (texture) {
-                mat2d.map = texture;
-            },
-            undefined
+                uniforms['satTexture'] = { type: "t", value: texture };
+            }
+        );
+
+        ResourceLoader.loadDem(
+            aTile.x, aTile.y, aTile.zoom,
+            function (texture) {
+                uniforms['bumpTexture'] = { type: "t", value: texture };
+            }
         );
 
         return mat2d;
@@ -76,4 +99,4 @@ class MapBuilder2D extends MapBuilderBase {
     }
 }
 
-export default MapBuilder2D;
+export default MapBuilder3DShader;

@@ -15,7 +15,7 @@ const options = {
 };
 
 class App {
-	
+
 	init() {
 
 		camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
@@ -46,9 +46,8 @@ class App {
 
 		controls.minDistance = appConfiguration.cameraMinDist;
 		controls.maxDistance = appConfiguration.cameraMaxDist;
-		controls.maxPolarAngle = 0;
 
-		controls.addEventListener('change', render);
+		controls.addEventListener('change', () => mapCanvas.triggerRender());
 
 		gui = new GUI();
 		buildGui();

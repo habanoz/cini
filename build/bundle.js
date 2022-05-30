@@ -46427,6 +46427,10 @@
 	        }
 	    }
 
+	    switch(){
+	        console.log("Abstract switch: Not expected");
+	    }
+
 	    render(){
 	        console.log("Abstract render: Not expected");
 	    }
@@ -46438,7 +46442,7 @@
 
 	class ResourceLoader {
 	    static loader = new TextureLoader();
-	    
+
 	    static loadSat(aTile, onLoad, onFail) {
 	        const x = aTile.x;
 	        const y = aTile.y;
@@ -46447,8 +46451,12 @@
 	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
 	    }
 
-	    static loadTex(fileName){
-	        return ResourceLoader.loader.load('images/'+fileName);
+	    static loadDem(x, y, z, onLoad, onFail) {
+	        return ResourceLoader.loader.load(`images/demTiles13/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	    }
+
+	    static loadTex(fileName) {
+	        return ResourceLoader.loader.load('images/' + fileName);
 	    }
 	}
 
@@ -46474,18 +46482,64 @@
 	}
 	const appConfiguration = new AppConfiguration();
 
-	class MapBuilder2D extends MapBuilderBase {
-	    constructor(defaultTex, mapBuilder) {
+	var heightVertShader = `
+uniform sampler2D bumpTexture;
+uniform float bumpScale;
+
+varying float vAmount;
+varying vec2 vUV;
+
+void main() 
+{ 
+	vUV = uv;
+
+	vec4 bumpData = texture2D( bumpTexture, uv );
+	
+	vAmount = bumpData.r; // assuming map is grayscale it doesn't matter if you use r, g, or b.
+	
+	// move the position along the normal
+	vec3 newPosition = position + normal * bumpScale * vAmount;
+	
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
+}
+`;
+
+	var textureHeightShader = `
+varying float vAmount;
+
+void main() 
+{			
+	vec4 snow  = smoothstep(0.90, 0.99, vAmount) * vec4(1.0, 1.0, 1.0, 0.0); 
+	vec4 rock = ( smoothstep(0.80, 0.95, vAmount) - smoothstep(0.90, 0.96, vAmount) ) * vec4(0.7, 0.5, 0.0, 0.0); 
+	vec4 plateu  =  (smoothstep(0.70, 0.90, vAmount)-smoothstep(0.80, 0.90, vAmount)) * vec4(0.4, 0.8, 0.4, 0.0); 
+	vec4 forest  =  (smoothstep(0.60, 0.80, vAmount)-smoothstep(0.70, 0.80, vAmount)) * vec4(0.1, 0.90, 0.1, 0.0); 
+	vec4 farms  =  (smoothstep(0.50, 0.70, vAmount)-smoothstep(0.60, 0.70, vAmount)) * vec4(0.6, 0.9, 0.0, 0.0); 
+	vec4 sand = (smoothstep(0.40, 0.60, vAmount)- smoothstep(0.50, 0.60, vAmount) ) * vec4(0.9, 0.9, 0.1, 0.0);
+	
+	gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + sand + farms + forest + plateu + snow + rock;
+}
+`;
+
+	class MapBuilder3DShader extends MapBuilderBase {
+	    constructor(defaultTex, mapBuilder, controls) {
 	        super();
 	        this.defaultTex = defaultTex;
 	        this.mapBuilder = mapBuilder;
-	        this.tileGeometries = [];
+	        this.controls = controls;
+	        this.fileLoader = new FileLoader();
+	        this.noBumpTex = ResourceLoader.loadTex('black.jpg');
 
+	        this.tileGeometries = [];
 	        for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
 	            const nTiles = zoomToNTiles(zoom);
+	            const segments = appConfiguration.tileDimension - 1;
 
-	            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
+	            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, segments, segments));
 	        }
+	    }
+
+	    switch() {
+	        this.controls.maxPolarAngle = 90;
 	    }
 
 	    findVisible(tile, zoom, level, viewRect, visibleTiles) {
@@ -46513,15 +46567,33 @@
 	    }
 
 	    buildMat(aTile) {
-	        const mat2d = new MeshBasicMaterial({
-	            map: this.defaultTex,
-	        });
+
+	        const uniforms = {
+	            bumpScale: { type: "f", value: appConfiguration.bumpScale },
+	            bumpTexture: { type: "t", value: this.noBumpTex },
+	            satTexture: { type: "t", value: this.defaultTex }
+	        };
+
+	        const mat2d = new ShaderMaterial(
+	            {
+	                uniforms: uniforms,
+	                vertexShader: heightVertShader,
+	                fragmentShader: textureHeightShader
+	            }
+	        );
+
 	        ResourceLoader.loadSat(
 	            aTile,
 	            function (texture) {
-	                mat2d.map = texture;
-	            },
-	            undefined
+	                uniforms['satTexture'] = { type: "t", value: texture };
+	            }
+	        );
+
+	        ResourceLoader.loadDem(
+	            aTile.x, aTile.y, aTile.zoom,
+	            function (texture) {
+	                uniforms['bumpTexture'] = { type: "t", value: texture };
+	            }
 	        );
 
 	        return mat2d;
@@ -46620,7 +46692,9 @@
 
 	    build() {
 	        this.defaultTex = ResourceLoader.loadTex('water512.jpg');
-	        this.mapBuilder = new MapBuilder2D(this.defaultTex, null);
+
+	        this.mapBuilder = new MapBuilder3DShader(this.defaultTex, null, this.controls);
+	        this.mapBuilder.switch();
 
 	        this.scene.add(this.ground);
 
@@ -46628,7 +46702,7 @@
 	    }
 
 	    render() {
-	        // if (!this.dirty) return;
+	        if (!this.dirty) return;
 
 	        this.visibleTiles.forEach(tile => tile.hide());
 	        this.visibleTiles = [];
@@ -46668,7 +46742,7 @@
 	};
 
 	class App {
-		
+
 		init() {
 
 			camera = new PerspectiveCamera(65, window.innerWidth / window.innerHeight, appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
@@ -46699,9 +46773,8 @@
 
 			controls.minDistance = appConfiguration.cameraMinDist;
 			controls.maxDistance = appConfiguration.cameraMaxDist;
-			controls.maxPolarAngle = 0;
 
-			controls.addEventListener('change', render);
+			controls.addEventListener('change', () => mapCanvas.triggerRender());
 
 			gui = new GUI$1();
 			buildGui();

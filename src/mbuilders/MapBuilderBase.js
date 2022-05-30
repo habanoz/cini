@@ -5,6 +5,10 @@ class MapBuilderBase {
         }
     }
 
+    switch(){
+        console.log("Abstract switch: Not expected");
+    }
+
     render(){
         console.log("Abstract render: Not expected");
     }

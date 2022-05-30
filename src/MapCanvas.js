@@ -1,3 +1,5 @@
+import MapBuilder3DMesh from "./mbuilders/MapBuilder3DMesh";
+import MapBuilder3DShader from "./mbuilders/MapBuilder3DShader";
 import MapBuilder2D from "./mbuilders/MapBuilder2D";
 import { Matrix4, Frustum, Group } from 'three';
 import appConfiguration from './utils/AppConfiguration';
@@ -21,7 +23,9 @@ class MapCanvas {
 
     build() {
         this.defaultTex = ResourceLoader.loadTex('water512.jpg');
-        this.mapBuilder = new MapBuilder2D(this.defaultTex, null);
+
+        this.mapBuilder = new MapBuilder3DShader(this.defaultTex, null, this.controls);
+        this.mapBuilder.switch();
 
         this.scene.add(this.ground);
 
@@ -29,7 +33,7 @@ class MapCanvas {
     }
 
     render() {
-        // if (!this.dirty) return;
+        if (!this.dirty) return;
 
         this.visibleTiles.forEach(tile => tile.hide());
         this.visibleTiles = [];
