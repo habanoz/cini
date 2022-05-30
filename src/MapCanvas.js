@@ -7,29 +7,27 @@ import ATile from './ATile';
 import ResourceLoader from './loaders/ResourceLoader';
 
 class MapCanvas {
-    constructor(scene, camera, controls) {
+    constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {
         this.dirty = false;
         this.visibleTiles = [];
-        this.mapBuilder = null;
         this.frustum = new Frustum();
         this.ground = new Group();
 
         this.scene = scene;
         this.camera = camera;
         this.controls = controls;
-        this.rootTile = null;
-        this.defaultTex = null;
+        this.mapBuilders = mapBuilders;
+        this.mapBuilderKey = mapBuilderKey;
+
+        this.mapBuilder = mapBuilders[mapBuilderKey];
+        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+            console.error("No mapBuilder found for key", mapBuilderKey);
+        }
+        this.mapBuilder.switch();
     }
 
     build() {
-        this.defaultTex = ResourceLoader.loadTex('water512.jpg');
-
-        this.mapBuilder = new MapBuilder3DShader(this.defaultTex, null, this.controls);
-        this.mapBuilder.switch();
-
         this.scene.add(this.ground);
-
-        this.rootTile = new ATile(-appConfiguration.sceneWidthHalf, -appConfiguration.sceneHeightHalf, appConfiguration.sceneWidth, appConfiguration.sceneHeight, 0);
     }
 
     render() {
@@ -41,7 +39,7 @@ class MapCanvas {
         const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
         this.frustum.setFromProjectionMatrix(matrix);
 
-        this.mapBuilder.findVisible(this.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
+        this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
 
         this.visibleTiles.forEach(tile => {
             if (tile.plane == null) {
@@ -58,8 +56,13 @@ class MapCanvas {
         this.dirty = true;
     }
 
-    setRenderer(renderer) {
-        this.mapBuilder = renderer
+    switchMapBuilder() {
+        this.mapBuilder = this.mapBuilders[this.mapBuilderKey];
+        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+            console.error("No mapBuilder found for key", this.mapBuilderKey);
+        }
+        this.mapBuilder.switch();
+        this.triggerRender();
     }
 }
 

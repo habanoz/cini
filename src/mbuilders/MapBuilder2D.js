@@ -5,22 +5,24 @@ import appConfiguration from '../utils/AppConfiguration';
 import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
 
 class MapBuilder2D extends MapBuilderBase {
-    constructor(defaultTex, mapBuilder, controls) {
-        super();
-        this.defaultTex = defaultTex;
-        this.mapBuilder = mapBuilder;
+    constructor(controls) {
+        super(controls);
         this.tileGeometries = [];
-        this.controls = controls;
-
-        for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
-            const nTiles = zoomToNTiles(zoom);
-
-            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
-        }
     }
 
-    switch(){
+    switch() {
         this.controls.maxPolarAngle = 0;
+        this.controls.object.position.x = this.controls.target.x;
+        this.controls.object.position.y = this.controls.target.y;
+
+        if (this.tileGeometries.length == 0) {
+            for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
+                const nTiles = zoomToNTiles(zoom);
+
+                this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
+            }
+        }
+
     }
 
     findVisible(tile, zoom, level, viewRect, visibleTiles) {
@@ -51,7 +53,7 @@ class MapBuilder2D extends MapBuilderBase {
         const mat2d = new MeshBasicMaterial({
             map: this.defaultTex,
         });
-        let self = this;
+
         ResourceLoader.loadSat(
             aTile,
             function (texture) {

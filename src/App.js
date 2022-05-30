@@ -1,11 +1,14 @@
 import * as THREE from 'three';
-import { GUI } from 'dat.gui';
+import { GUI } from 'lil-gui';
 import { MapControls } from './controls/StagedZoomOrbitControl';
 import Stats from 'stats-js';
 import MapCanvas from './MapCanvas';
 import appConfiguration from './utils/AppConfiguration';
+import MapBuilder2D from './mbuilders/MapBuilder2D';
+import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
+import MapBuilder3DShader from './mbuilders/MapBuilder3DShader';
 
-let camera, scene, renderer, controls, stats, mapCanvas, gui;
+let camera, scene, renderer, controls, stats, mapCanvas, gui, mapBuilders = new Map();
 
 const options = {
 	go2d: function () {
@@ -52,9 +55,17 @@ class App {
 		gui = new GUI();
 		buildGui();
 
-		mapCanvas = new MapCanvas(scene, camera, controls);
+		mapBuilders['2D'] = new MapBuilder2D(controls);
+		mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
+		mapBuilders['3DShader'] = new MapBuilder3DShader(controls);
+
+		mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
 		mapCanvas.build();
 		mapCanvas.triggerRender();
+
+		const buildersFolder = gui.addFolder('Builders');
+		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShader']);
+		builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 		animate();
 	}

@@ -1,55 +1,34 @@
-import MapBuilderBase from './MapBuilderBase';
+import MapBuilder3DBase from './MapBuilder3DBase';
 import ResourceLoader from '../loaders/ResourceLoader';
 import { zoomToNTiles } from '../utils/TilingUtils';
 import appConfiguration from '../utils/AppConfiguration';
-import { ShaderMaterial, Mesh, PlaneGeometry, Box3, FileLoader } from 'three';
+import { ShaderMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
 import heightVertShader from './shaders/heightVert';
 import textureFragShader from './shaders/textureFrag';
 import textureHeightShader from './shaders/heightFrag';
 
-class MapBuilder3DShader extends MapBuilderBase {
-    constructor(defaultTex, mapBuilder, controls) {
-        super();
-        this.defaultTex = defaultTex;
-        this.mapBuilder = mapBuilder;
-        this.controls = controls;
-        this.fileLoader = new FileLoader();
-        this.noBumpTex = ResourceLoader.loadTex('black.jpg');
+class MapBuilder3DShader extends MapBuilder3DBase {
+    constructor(controls) {
+        super(controls);
+
+        this.noBumpTex = null;
 
         this.tileGeometries = [];
-        for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
-            const nTiles = zoomToNTiles(zoom);
-            const segments = appConfiguration.tileDimension - 1;
-
-            this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, segments, segments));
-        }
     }
 
     switch() {
-        this.controls.maxPolarAngle = 90;
-    }
+        super.switch();
+        if (this.tileGeometries.length == 0) {
+            for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
+                const nTiles = zoomToNTiles(zoom);
+                const segments = appConfiguration.tileDimension - 1;
 
-    findVisible(tile, zoom, level, viewRect, visibleTiles) {
-        const box = new Box3().copy(tile.box);
-
-        if (!viewRect.intersectsBox(box)) {
-            return;
+                this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, segments, segments));
+            }
         }
 
-        if (level >= zoom) {
-            visibleTiles.push(tile);
-        } else {
-            if (tile.children == null) {
-                tile.split();
-            }
-
-            if (tile.children.length == 0) {
-                visibleTiles.push(tile);
-            } else {
-                for (const child of tile.children) {
-                    this.findVisible(child, zoom, level + 1, viewRect, visibleTiles);
-                }
-            }
+        if (this.noBumpTex == null) {
+            this.noBumpTex = ResourceLoader.loadTex('black.jpg');
         }
     }
 

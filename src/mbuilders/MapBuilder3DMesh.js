@@ -1,43 +1,12 @@
-import MapBuilderBase from './MapBuilderBase';
+import MapBuilder3DBase from './MapBuilder3DBase';
 import ResourceLoader from '../loaders/ResourceLoader';
 import { zoomToNTiles } from '../utils/TilingUtils';
 import appConfiguration from '../utils/AppConfiguration';
 import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
 
-class MapBuilder3DMesh extends MapBuilderBase {
-    constructor(defaultTex, mapBuilder, controls) {
-        super();
-        this.defaultTex = defaultTex;
-        this.mapBuilder = mapBuilder;
-        this.controls = controls;
-    }
-
-    switch() {
-        this.controls.maxPolarAngle = 90;
-    }
-
-    findVisible(tile, zoom, level, viewRect, visibleTiles) {
-        const box = new Box3().copy(tile.box);
-
-        if (!viewRect.intersectsBox(box)) {
-            return;
-        }
-
-        if (level >= zoom) {
-            visibleTiles.push(tile);
-        } else {
-            if (tile.children == null) {
-                tile.split();
-            }
-
-            if (tile.children.length == 0) {
-                visibleTiles.push(tile);
-            } else {
-                for (const child of tile.children) {
-                    this.findVisible(child, zoom, level + 1, viewRect, visibleTiles);
-                }
-            }
-        }
+class MapBuilder3DMesh extends MapBuilder3DBase {
+    constructor(controls) {
+        super(controls);
     }
 
     buildMat(aTile) {
