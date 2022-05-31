@@ -26,15 +26,13 @@ class App {
 		stats = new Stats();
 		document.body.appendChild(stats.dom);
 
-		const geometry = new THREE.BoxGeometry();
-		const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-		const mesh = new THREE.Mesh(geometry, material);
-		scene.add(mesh);
+		//this.addLight();
 
 		renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
+		//renderer.shadowMap.enabled = true;
+
 		document.body.appendChild(renderer.domElement);
 
 		window.addEventListener('resize', onWindowResize, false);
@@ -62,6 +60,21 @@ class App {
 		animate();
 	}
 
+
+	addLight() {
+		var light = new THREE.DirectionalLight(0xffffff, 1);
+		light.position.set(0, 1, 1).normalize();
+		light.castShadow = true;
+
+		light.shadow.mapSize.width = 500000; // default
+		light.shadow.mapSize.height = 500000; // default
+		light.shadow.camera.near = 300; // default
+		light.shadow.camera.far = 500000; // default
+
+		scene.add(light);
+
+		scene.add(new THREE.AmbientLight(0x404040));
+	}
 }
 
 function getFov() {
@@ -79,6 +92,7 @@ function onWindowResize() {
 	camera.updateProjectionMatrix();
 
 	renderer.setSize(window.innerWidth, window.innerHeight);
+	mapCanvas.triggerRender();
 }
 
 function animate() {
