@@ -37,14 +37,19 @@ class ATile {
     show() {
         // this.plane.frustumCulled = false;
         this.plane.visible = true;
+
+        if (appConfiguration.showTileBorders) {
+            this.plane.scale.x = 0.99;
+            this.plane.scale.y = 0.99;
+        }
     }
 
     hide() {
         // this.plane.frustumCulled = true;
-        if ( this.plane != null){
+        if (this.plane != null) {
             this.plane.visible = false;
         }
-        
+
     }
 
     split() {

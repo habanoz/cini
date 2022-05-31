@@ -6,6 +6,7 @@ class AppConfiguration {
     sceneHeightHalf = this.sceneHeight / 2;
 
     tileDimension = 256;
+    showTileBorders = false;
 
     initialElevation = 4_000_000;
     cameraMaxDist = this.initialElevation;

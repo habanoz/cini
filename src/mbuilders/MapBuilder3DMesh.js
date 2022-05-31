@@ -13,7 +13,7 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
         const mat2d = new MeshBasicMaterial({
             map: this.defaultTex,
         });
-        let self = this;
+
         ResourceLoader.loadSat(
             aTile,
             function (texture) {

@@ -53,9 +53,6 @@ class App {
 
 		controls.addEventListener('change', () => mapCanvas.triggerRender());
 
-		gui = new GUI();
-		buildGui();
-
 		mapBuilders['2D'] = new MapBuilder2D(controls);
 		mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
 		mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
@@ -64,6 +61,9 @@ class App {
 		mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
 		mapCanvas.build();
 		mapCanvas.triggerRender();
+
+		gui = new GUI();
+		buildGui(mapCanvas);
 
 		const buildersFolder = gui.addFolder('Builders');
 		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShaderColor','3DShaderSat']);
@@ -97,12 +97,13 @@ function render() {
 	renderer.render(scene, camera);
 }
 
-function buildGui() {
+function buildGui(mapCanvas) {
 	gui.add(controls, 'screenSpacePanning');
 	gui.add(controls.pSphere, 'radius').onChange(render).listen();
 	gui.add(camera.position, 'y').onChange(render).listen();
 	gui.add(controls, 'zoomLevel').listen();
 	gui.add(options, 'go2d');
+	gui.add(appConfiguration, 'showTileBorders').onChange(mapCanvas.triggerRender());
 }
 
 export default App;

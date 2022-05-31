@@ -11,9 +11,10 @@ class MapBuilder2D extends MapBuilderBase {
     }
 
     switch() {
+        
+        //this.controls.object.position.x = this.controls.target.x;
+        //this.controls.object.position.y = this.controls.target.y;
         this.controls.maxPolarAngle = 0;
-        this.controls.object.position.x = this.controls.target.x;
-        this.controls.object.position.y = this.controls.target.y;
 
         if (this.tileGeometries.length == 0) {
             for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
@@ -71,7 +72,7 @@ class MapBuilder2D extends MapBuilderBase {
 
         planeGrid.position.x = tile.centerX;
         planeGrid.position.y = tile.centerY;
-
+        
         planeGrid.visible = false;
 
         return planeGrid;
