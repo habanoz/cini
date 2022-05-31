@@ -1,8 +1,5 @@
 import MapBuilderBase from './MapBuilderBase';
-import ResourceLoader from '../loaders/ResourceLoader';
-import { zoomToNTiles } from '../utils/TilingUtils';
-import appConfiguration from '../utils/AppConfiguration';
-import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
+import { Box3 } from 'three';
 
 class MapBuilder3DBase extends MapBuilderBase {
     distantTilesThreshold = 2;
@@ -22,7 +19,7 @@ class MapBuilder3DBase extends MapBuilderBase {
             return;
         }
 
-        if (level >= zoom || Math.abs(tile.centerX - this.controls.target.x) / tile.width > this.distantTilesThreshold || Math.abs(tile.centerY - this.controls.target.y) / tile.height > this.distantTilesThreshold) {
+        if (level >= zoom || this.isTooFarOff(tile)) {
             visibleTiles.push(tile);
         } else {
             if (tile.children == null) {
@@ -37,6 +34,11 @@ class MapBuilder3DBase extends MapBuilderBase {
                 }
             }
         }
+    }
+
+    isTooFarOff(tile) {
+        return Math.abs(tile.centerX - this.controls.target.x) / tile.width > this.distantTilesThreshold ||
+            Math.abs(tile.centerY - this.controls.target.y) / tile.height > this.distantTilesThreshold;
     }
 }
 

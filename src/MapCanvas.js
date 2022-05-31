@@ -1,10 +1,4 @@
-import MapBuilder3DMesh from "./mbuilders/MapBuilder3DMesh";
-import MapBuilder3DShader from "./mbuilders/MapBuilder3DShader";
-import MapBuilder2D from "./mbuilders/MapBuilder2D";
 import { Matrix4, Frustum, Group } from 'three';
-import appConfiguration from './utils/AppConfiguration';
-import ATile from './ATile';
-import ResourceLoader from './loaders/ResourceLoader';
 
 class MapCanvas {
     constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {

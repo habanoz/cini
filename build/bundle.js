@@ -46194,23 +46194,63 @@
 
 	var Stats = stats_min.exports;
 
-	class ResourceLoader {
-	    static loader = new TextureLoader();
+	class MapCanvas {
+	    constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {
+	        this.dirty = false;
+	        this.visibleTiles = [];
+	        this.frustum = new Frustum();
+	        this.ground = new Group();
 
-	    static loadSat(aTile, onLoad, onFail) {
-	        const x = aTile.x;
-	        const y = aTile.y;
-	        const z = aTile.zoom;
+	        this.scene = scene;
+	        this.camera = camera;
+	        this.controls = controls;
+	        this.mapBuilders = mapBuilders;
+	        this.mapBuilderKey = mapBuilderKey;
 
-	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	        this.mapBuilder = mapBuilders[mapBuilderKey];
+	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+	            console.error("No mapBuilder found for key", mapBuilderKey);
+	        }
+	        this.mapBuilder.switch();
 	    }
 
-	    static loadDem(x, y, z, onLoad, onFail) {
-	        return ResourceLoader.loader.load(`images/demTiles13/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	    build() {
+	        this.scene.add(this.ground);
 	    }
 
-	    static loadTex(fileName) {
-	        return ResourceLoader.loader.load('images/' + fileName);
+	    render() {
+	        if (!this.dirty) return;
+
+	        this.visibleTiles.forEach(tile => tile.hide());
+	        this.visibleTiles = [];
+
+	        const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
+	        this.frustum.setFromProjectionMatrix(matrix);
+
+	        this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
+
+	        this.visibleTiles.forEach(tile => {
+	            if (tile.plane == null) {
+	                tile.plane = this.mapBuilder.buildMesh(tile);
+	                this.ground.add(tile.plane);
+	            }
+	        });
+	        this.visibleTiles.forEach(tile => tile.show());
+
+	        this.dirty = false;
+	    }
+
+	    triggerRender() {
+	        this.dirty = true;
+	    }
+
+	    switchMapBuilder() {
+	        this.mapBuilder = this.mapBuilders[this.mapBuilderKey];
+	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+	            console.error("No mapBuilder found for key", this.mapBuilderKey);
+	        }
+	        this.mapBuilder.switch();
+	        this.triggerRender();
 	    }
 	}
 
@@ -46231,6 +46271,26 @@
 	    zoomColorMap = { 0: '#ff0000', 1: '#ff8000', 2: '#ffff00', 3: '#80ff00', 4: '#00ff00', 5: '#00ff80', 6: '#00ffff', 7: '#0080ff', 8: '#0000ff', 9: '#8000ff', 10: '#ff00ff', 11: '#ff0080', 12: '#ffbf00', 13: '#bfff00', 14: '#40ff00', 15: '#00ff40', 16: '00ffbf', 17: '#00bfff', 18: '	#0040ff', 19: '#4000ff', 20: '#bf00ff', 21: '#ff00bf', 22: '#ff0040', 23: 'black' };
 	}
 	const appConfiguration = new AppConfiguration();
+
+	class ResourceLoader {
+	    static loader = new TextureLoader();
+
+	    static loadSat(aTile, onLoad, onFail) {
+	        const x = aTile.x;
+	        const y = aTile.y;
+	        const z = aTile.zoom;
+
+	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	    }
+
+	    static loadDem(x, y, z, onLoad, onFail) {
+	        return ResourceLoader.loader.load(`images/demTiles13/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
+	    }
+
+	    static loadTex(fileName) {
+	        return ResourceLoader.loader.load('images/' + fileName);
+	    }
+	}
 
 	function zoomToNTiles(zoom) {
 	    return 2 ** (zoom);
@@ -46324,6 +46384,80 @@
 	    }
 	}
 
+	class MapBuilder2D extends MapBuilderBase {
+	    constructor(controls) {
+	        super(controls);
+	        this.tileGeometries = [];
+	    }
+
+	    switch() {
+	        this.controls.maxPolarAngle = 0;
+	        this.controls.object.position.x = this.controls.target.x;
+	        this.controls.object.position.y = this.controls.target.y;
+
+	        if (this.tileGeometries.length == 0) {
+	            for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
+	                const nTiles = zoomToNTiles(zoom);
+
+	                this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
+	            }
+	        }
+
+	    }
+
+	    findVisible(tile, zoom, level, viewRect, visibleTiles) {
+	        const box = new Box3().copy(tile.box);
+
+	        if (!viewRect.intersectsBox(box)) {
+	            return;
+	        }
+
+	        if (level >= zoom) {
+	            visibleTiles.push(tile);
+	        } else {
+	            if (tile.children == null) {
+	                tile.split();
+	            }
+
+	            if (tile.children.length == 0) {
+	                visibleTiles.push(tile);
+	            } else {
+	                for (const child of tile.children) {
+	                    this.findVisible(child, zoom, level + 1, viewRect, visibleTiles);
+	                }
+	            }
+	        }
+	    }
+
+	    buildMat(aTile) {
+	        const mat2d = new MeshBasicMaterial({
+	            map: this.defaultTex,
+	        });
+
+	        ResourceLoader.loadSat(
+	            aTile,
+	            function (texture) {
+	                mat2d.map = texture;
+	            },
+	            undefined
+	        );
+
+	        return mat2d;
+	    }
+
+	    buildMesh(tile) {
+	        const gridPlaneGeometry = this.tileGeometries[tile.zoom];
+	        const planeGrid = new Mesh(gridPlaneGeometry, this.buildMat(tile));
+
+	        planeGrid.position.x = tile.centerX;
+	        planeGrid.position.y = tile.centerY;
+
+	        planeGrid.visible = false;
+
+	        return planeGrid;
+	    }
+	}
+
 	class MapBuilder3DBase extends MapBuilderBase {
 	    distantTilesThreshold = 2;
 
@@ -46342,7 +46476,7 @@
 	            return;
 	        }
 
-	        if (level >= zoom || Math.abs(tile.centerX - this.controls.target.x) / tile.width > this.distantTilesThreshold || Math.abs(tile.centerY - this.controls.target.y) / tile.height > this.distantTilesThreshold) {
+	        if (level >= zoom || this.isTooFarOff(tile)) {
 	            visibleTiles.push(tile);
 	        } else {
 	            if (tile.children == null) {
@@ -46357,6 +46491,11 @@
 	                }
 	            }
 	        }
+	    }
+
+	    isTooFarOff(tile) {
+	        return Math.abs(tile.centerX - this.controls.target.x) / tile.width > this.distantTilesThreshold ||
+	            Math.abs(tile.centerY - this.controls.target.y) / tile.height > this.distantTilesThreshold;
 	    }
 	}
 
@@ -46470,7 +46609,6 @@
 	            }
 	        }
 
-
 	        pos.needsUpdate = true;
 	        gridPlaneGeometry.computeBoundingBox();
 
@@ -46500,28 +46638,11 @@ void main()
 }
 `;
 
-	var textureHeightShader = `
-varying float vAmount;
-
-void main() 
-{			
-	vec4 snow  = smoothstep(0.90, 0.99, vAmount) * vec4(1.0, 1.0, 1.0, 0.0); 
-	vec4 rock = ( smoothstep(0.80, 0.95, vAmount) - smoothstep(0.90, 0.96, vAmount) ) * vec4(0.7, 0.5, 0.0, 0.0); 
-	vec4 plateu  =  (smoothstep(0.70, 0.90, vAmount)-smoothstep(0.80, 0.90, vAmount)) * vec4(0.4, 0.8, 0.4, 0.0); 
-	vec4 forest  =  (smoothstep(0.60, 0.80, vAmount)-smoothstep(0.70, 0.80, vAmount)) * vec4(0.1, 0.90, 0.1, 0.0); 
-	vec4 farms  =  (smoothstep(0.50, 0.70, vAmount)-smoothstep(0.60, 0.70, vAmount)) * vec4(0.6, 0.9, 0.0, 0.0); 
-	vec4 sand = (smoothstep(0.40, 0.60, vAmount)- smoothstep(0.50, 0.60, vAmount) ) * vec4(0.9, 0.9, 0.1, 0.0);
-	
-	gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + sand + farms + forest + plateu + snow + rock;
-}
-`;
-
-	class MapBuilder3DShader extends MapBuilder3DBase {
+	class MapBuilder3DShaderBase extends MapBuilder3DBase {
 	    constructor(controls) {
 	        super(controls);
-
+	        
 	        this.noBumpTex = null;
-
 	        this.tileGeometries = [];
 	    }
 
@@ -46542,25 +46663,16 @@ void main()
 	    }
 
 	    buildMat(aTile) {
-
 	        const uniforms = {
 	            bumpScale: { type: "f", value: appConfiguration.bumpScale },
-	            bumpTexture: { type: "t", value: this.noBumpTex },
-	            satTexture: { type: "t", value: this.defaultTex }
+	            bumpTexture: { type: "t", value: this.noBumpTex }
 	        };
-
+	        
 	        const mat2d = new ShaderMaterial(
 	            {
 	                uniforms: uniforms,
 	                vertexShader: heightVertShader,
-	                fragmentShader: textureHeightShader
-	            }
-	        );
-
-	        ResourceLoader.loadSat(
-	            aTile,
-	            function (texture) {
-	                uniforms['satTexture'] = { type: "t", value: texture };
+	                fragmentShader: this.getFragmentShader()
 	            }
 	        );
 
@@ -46574,6 +46686,10 @@ void main()
 	        return mat2d;
 	    }
 
+	    getFragmentShader() {
+	        console.error("Not implemented: getFragmentShader");
+	    }
+
 	    buildMesh(tile) {
 	        const gridPlaneGeometry = this.tileGeometries[tile.zoom];
 	        const planeGrid = new Mesh(gridPlaneGeometry, this.buildMat(tile));
@@ -46587,137 +46703,69 @@ void main()
 	    }
 	}
 
-	class MapBuilder2D extends MapBuilderBase {
+	var fragShader$1 = `
+varying float vAmount;
+
+void main() 
+{			
+	vec4 snow  = smoothstep(0.90, 0.99, vAmount) * vec4(1.0, 1.0, 1.0, 0.0); 
+	vec4 rock = ( smoothstep(0.80, 0.95, vAmount) - smoothstep(0.90, 0.96, vAmount) ) * vec4(0.7, 0.5, 0.0, 0.0); 
+	vec4 plateu  =  (smoothstep(0.70, 0.90, vAmount)-smoothstep(0.80, 0.90, vAmount)) * vec4(0.4, 0.8, 0.4, 0.0); 
+	vec4 forest  =  (smoothstep(0.60, 0.80, vAmount)-smoothstep(0.70, 0.80, vAmount)) * vec4(0.1, 0.90, 0.1, 0.0); 
+	vec4 farms  =  (smoothstep(0.50, 0.70, vAmount)-smoothstep(0.60, 0.70, vAmount)) * vec4(0.6, 0.9, 0.0, 0.0); 
+	vec4 sand = (smoothstep(0.40, 0.60, vAmount)- smoothstep(0.50, 0.60, vAmount) ) * vec4(0.9, 0.9, 0.1, 0.0);
+	
+	gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + sand + farms + forest + plateu + snow + rock;
+}
+`;
+
+	class MapBuilder3DShaderColor extends MapBuilder3DShaderBase {
 	    constructor(controls) {
 	        super(controls);
+	    }
+
+	    getFragmentShader() {
+	        return fragShader$1;
+	    }
+	}
+
+	var fragShader = `
+uniform sampler2D satTexture;
+			
+varying vec2 vUV;
+
+void main() 
+{	
+	gl_FragColor = texture2D( satTexture, vUV );
+}
+`;
+
+	class MapBuilder3DShader extends MapBuilder3DShaderBase {
+	    constructor(controls) {
+	        super(controls);
+
+	        this.noBumpTex = null;
+
 	        this.tileGeometries = [];
 	    }
 
-	    switch() {
-	        this.controls.maxPolarAngle = 0;
-	        this.controls.object.position.x = this.controls.target.x;
-	        this.controls.object.position.y = this.controls.target.y;
-
-	        if (this.tileGeometries.length == 0) {
-	            for (let zoom = 0; zoom <= appConfiguration.maxZoom; zoom++) {
-	                const nTiles = zoomToNTiles(zoom);
-
-	                this.tileGeometries.push(new PlaneGeometry(appConfiguration.sceneWidth / nTiles, appConfiguration.sceneHeight / nTiles, 1, 1));
-	            }
-	        }
-
-	    }
-
-	    findVisible(tile, zoom, level, viewRect, visibleTiles) {
-	        const box = new Box3().copy(tile.box);
-
-	        if (!viewRect.intersectsBox(box)) {
-	            return;
-	        }
-
-	        if (level >= zoom) {
-	            visibleTiles.push(tile);
-	        } else {
-	            if (tile.children == null) {
-	                tile.split();
-	            }
-
-	            if (tile.children.length == 0) {
-	                visibleTiles.push(tile);
-	            } else {
-	                for (const child of tile.children) {
-	                    this.findVisible(child, zoom, level + 1, viewRect, visibleTiles);
-	                }
-	            }
-	        }
-	    }
 
 	    buildMat(aTile) {
-	        const mat2d = new MeshBasicMaterial({
-	            map: this.defaultTex,
-	        });
+	        const mat2d = super.buildMat(aTile);
+	        mat2d.uniforms['satTexture'] = { type: "t", value: this.noBumpTex };
 
 	        ResourceLoader.loadSat(
 	            aTile,
 	            function (texture) {
-	                mat2d.map = texture;
-	            },
-	            undefined
+	                mat2d.uniforms['satTexture'] = { type: "t", value: texture };
+	            }
 	        );
 
 	        return mat2d;
 	    }
 
-	    buildMesh(tile) {
-	        const gridPlaneGeometry = this.tileGeometries[tile.zoom];
-	        const planeGrid = new Mesh(gridPlaneGeometry, this.buildMat(tile));
-
-	        planeGrid.position.x = tile.centerX;
-	        planeGrid.position.y = tile.centerY;
-
-	        planeGrid.visible = false;
-
-	        return planeGrid;
-	    }
-	}
-
-	class MapCanvas {
-	    constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {
-	        this.dirty = false;
-	        this.visibleTiles = [];
-	        this.frustum = new Frustum();
-	        this.ground = new Group();
-
-	        this.scene = scene;
-	        this.camera = camera;
-	        this.controls = controls;
-	        this.mapBuilders = mapBuilders;
-	        this.mapBuilderKey = mapBuilderKey;
-
-	        this.mapBuilder = mapBuilders[mapBuilderKey];
-	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
-	            console.error("No mapBuilder found for key", mapBuilderKey);
-	        }
-	        this.mapBuilder.switch();
-	    }
-
-	    build() {
-	        this.scene.add(this.ground);
-	    }
-
-	    render() {
-	        if (!this.dirty) return;
-
-	        this.visibleTiles.forEach(tile => tile.hide());
-	        this.visibleTiles = [];
-
-	        const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
-	        this.frustum.setFromProjectionMatrix(matrix);
-
-	        this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
-
-	        this.visibleTiles.forEach(tile => {
-	            if (tile.plane == null) {
-	                tile.plane = this.mapBuilder.buildMesh(tile);
-	                this.ground.add(tile.plane);
-	            }
-	        });
-	        this.visibleTiles.forEach(tile => tile.show());
-
-	        this.dirty = false;
-	    }
-
-	    triggerRender() {
-	        this.dirty = true;
-	    }
-
-	    switchMapBuilder() {
-	        this.mapBuilder = this.mapBuilders[this.mapBuilderKey];
-	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
-	            console.error("No mapBuilder found for key", this.mapBuilderKey);
-	        }
-	        this.mapBuilder.switch();
-	        this.triggerRender();
+	    getFragmentShader() {
+	        return fragShader;
 	    }
 	}
 
@@ -46770,14 +46818,15 @@ void main()
 
 			mapBuilders['2D'] = new MapBuilder2D(controls);
 			mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
-			mapBuilders['3DShader'] = new MapBuilder3DShader(controls);
+			mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
+			mapBuilders['3DShaderSat'] = new MapBuilder3DShader(controls);
 
 			mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
 			mapCanvas.build();
 			mapCanvas.triggerRender();
 
 			const buildersFolder = gui.addFolder('Builders');
-			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShader']);
+			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShaderColor','3DShaderSat']);
 			builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 			animate();

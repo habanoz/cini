@@ -6,7 +6,8 @@ import MapCanvas from './MapCanvas';
 import appConfiguration from './utils/AppConfiguration';
 import MapBuilder2D from './mbuilders/MapBuilder2D';
 import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
-import MapBuilder3DShader from './mbuilders/MapBuilder3DShader';
+import MapBuilder3DShaderColor from './mbuilders/MapBuilder3DShaderColor';
+import MapBuilder3DShaderSat from './mbuilders/MapBuilder3DShaderSat';
 
 let camera, scene, renderer, controls, stats, mapCanvas, gui, mapBuilders = new Map();
 
@@ -57,14 +58,15 @@ class App {
 
 		mapBuilders['2D'] = new MapBuilder2D(controls);
 		mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
-		mapBuilders['3DShader'] = new MapBuilder3DShader(controls);
+		mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
+		mapBuilders['3DShaderSat'] = new MapBuilder3DShaderSat(controls);
 
 		mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
 		mapCanvas.build();
 		mapCanvas.triggerRender();
 
 		const buildersFolder = gui.addFolder('Builders');
-		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShader']);
+		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShaderColor','3DShaderSat']);
 		builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 		animate();

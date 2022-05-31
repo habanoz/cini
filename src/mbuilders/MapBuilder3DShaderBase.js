@@ -2,17 +2,14 @@ import MapBuilder3DBase from './MapBuilder3DBase';
 import ResourceLoader from '../loaders/ResourceLoader';
 import { zoomToNTiles } from '../utils/TilingUtils';
 import appConfiguration from '../utils/AppConfiguration';
-import { ShaderMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
+import { ShaderMaterial, Mesh, PlaneGeometry } from 'three';
 import heightVertShader from './shaders/heightVert';
-import textureFragShader from './shaders/textureFrag';
-import textureHeightShader from './shaders/heightFrag';
 
-class MapBuilder3DShader extends MapBuilder3DBase {
+class MapBuilder3DShaderBase extends MapBuilder3DBase {
     constructor(controls) {
         super(controls);
-
+        
         this.noBumpTex = null;
-
         this.tileGeometries = [];
     }
 
@@ -33,25 +30,17 @@ class MapBuilder3DShader extends MapBuilder3DBase {
     }
 
     buildMat(aTile) {
-
+        const scope = this;
         const uniforms = {
             bumpScale: { type: "f", value: appConfiguration.bumpScale },
-            bumpTexture: { type: "t", value: this.noBumpTex },
-            satTexture: { type: "t", value: this.defaultTex }
+            bumpTexture: { type: "t", value: this.noBumpTex }
         };
-
+        
         const mat2d = new ShaderMaterial(
             {
                 uniforms: uniforms,
                 vertexShader: heightVertShader,
-                fragmentShader: textureHeightShader
-            }
-        );
-
-        ResourceLoader.loadSat(
-            aTile,
-            function (texture) {
-                uniforms['satTexture'] = { type: "t", value: texture };
+                fragmentShader: this.getFragmentShader()
             }
         );
 
@@ -63,6 +52,10 @@ class MapBuilder3DShader extends MapBuilder3DBase {
         );
 
         return mat2d;
+    }
+
+    getFragmentShader() {
+        console.error("Not implemented: getFragmentShader");
     }
 
     buildMesh(tile) {
@@ -78,4 +71,4 @@ class MapBuilder3DShader extends MapBuilder3DBase {
     }
 }
 
-export default MapBuilder3DShader;
+export default MapBuilder3DShaderBase;

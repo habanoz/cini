@@ -115,7 +115,6 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
             }
         }
 
-
         pos.needsUpdate = true;
         gridPlaneGeometry.computeBoundingBox();
 
