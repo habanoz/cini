@@ -1,7 +1,11 @@
 import { Matrix4, Frustum, Group } from 'three';
+import MapBuilder2D from './mbuilders/MapBuilder2D';
+import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
+import MapBuilder3DShaderColor from './mbuilders/MapBuilder3DShaderColor';
+import MapBuilder3DShaderSat from './mbuilders/MapBuilder3DShaderSat';
 
 class MapCanvas {
-    constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {
+    constructor(scene, camera, controls) {
         this.dirty = false;
         this.visibleTiles = [];
         this.frustum = new Frustum();
@@ -10,14 +14,25 @@ class MapCanvas {
         this.scene = scene;
         this.camera = camera;
         this.controls = controls;
-        this.mapBuilders = mapBuilders;
-        this.mapBuilderKey = mapBuilderKey;
 
-        this.mapBuilder = mapBuilders[mapBuilderKey];
+        this.mapBuilders = this.getMapBuilders(controls);
+        this.mapBuilderKey = '2D';
+
+        this.mapBuilder = this.mapBuilders.get(this.mapBuilderKey);
         if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
-            console.error("No mapBuilder found for key", mapBuilderKey);
+            console.error("No mapBuilder found for key", this.mapBuilderKey);
         }
         this.mapBuilder.switch();
+    }
+
+    getMapBuilders(controls) {
+        const mapBuilders = new Map();
+        mapBuilders.set('2D', new MapBuilder2D(controls, this));
+        mapBuilders.set('3DMesh', new MapBuilder3DMesh(controls, this));
+        mapBuilders.set('3DShaderColor', new MapBuilder3DShaderColor(controls, this));
+        mapBuilders.set('3DShaderSat', new MapBuilder3DShaderSat(controls, this));
+
+        return mapBuilders;
     }
 
     build() {
@@ -25,7 +40,7 @@ class MapCanvas {
     }
 
     render() {
-        if (!this.dirty) return;
+        if (!this.dirty) return false;
 
         this.visibleTiles.forEach(tile => tile.hide());
         this.visibleTiles = [];
@@ -44,6 +59,7 @@ class MapCanvas {
         this.visibleTiles.forEach(tile => tile.show());
 
         this.dirty = false;
+        return true;
     }
 
     triggerRender() {
@@ -51,12 +67,16 @@ class MapCanvas {
     }
 
     switchMapBuilder() {
-        this.mapBuilder = this.mapBuilders[this.mapBuilderKey];
+        this.mapBuilder = this.mapBuilders.get(this.mapBuilderKey);
         if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
             console.error("No mapBuilder found for key", this.mapBuilderKey);
         }
         this.mapBuilder.switch();
         this.triggerRender();
+    }
+
+    getMapBuilderKeys() {
+        return Array.from(this.mapBuilders.keys());
     }
 }
 

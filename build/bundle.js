@@ -46194,63 +46194,23 @@
 
 	var Stats = stats_min.exports;
 
-	class MapCanvas {
-	    constructor(scene, camera, controls, mapBuilders, mapBuilderKey) {
-	        this.dirty = false;
-	        this.visibleTiles = [];
-	        this.frustum = new Frustum();
-	        this.ground = new Group();
+	class ResourceLoader {
+	    static loader = new TextureLoader();
 
-	        this.scene = scene;
-	        this.camera = camera;
-	        this.controls = controls;
-	        this.mapBuilders = mapBuilders;
-	        this.mapBuilderKey = mapBuilderKey;
+	    static loadSat(aTile, onLoad, onFail) {
+	        const x = aTile.x;
+	        const y = aTile.y;
+	        const z = aTile.zoom;
 
-	        this.mapBuilder = mapBuilders[mapBuilderKey];
-	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
-	            console.error("No mapBuilder found for key", mapBuilderKey);
-	        }
-	        this.mapBuilder.switch();
+	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
 	    }
 
-	    build() {
-	        this.scene.add(this.ground);
+	    static loadDem(x, y, z, onLoad, onFail) {
+	        return ResourceLoader.loader.load(`images/demTiles13/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
 	    }
 
-	    render() {
-	        if (!this.dirty) return;
-
-	        this.visibleTiles.forEach(tile => tile.hide());
-	        this.visibleTiles = [];
-
-	        const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
-	        this.frustum.setFromProjectionMatrix(matrix);
-
-	        this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
-
-	        this.visibleTiles.forEach(tile => {
-	            if (tile.plane == null) {
-	                tile.plane = this.mapBuilder.buildMesh(tile);
-	                this.ground.add(tile.plane);
-	            }
-	        });
-	        this.visibleTiles.forEach(tile => tile.show());
-
-	        this.dirty = false;
-	    }
-
-	    triggerRender() {
-	        this.dirty = true;
-	    }
-
-	    switchMapBuilder() {
-	        this.mapBuilder = this.mapBuilders[this.mapBuilderKey];
-	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
-	            console.error("No mapBuilder found for key", this.mapBuilderKey);
-	        }
-	        this.mapBuilder.switch();
-	        this.triggerRender();
+	    static loadTex(fileName) {
+	        return ResourceLoader.loader.load('images/' + fileName);
 	    }
 	}
 
@@ -46272,26 +46232,6 @@
 	    zoomColorMap = { 0: '#ff0000', 1: '#ff8000', 2: '#ffff00', 3: '#80ff00', 4: '#00ff00', 5: '#00ff80', 6: '#00ffff', 7: '#0080ff', 8: '#0000ff', 9: '#8000ff', 10: '#ff00ff', 11: '#ff0080', 12: '#ffbf00', 13: '#bfff00', 14: '#40ff00', 15: '#00ff40', 16: '00ffbf', 17: '#00bfff', 18: '	#0040ff', 19: '#4000ff', 20: '#bf00ff', 21: '#ff00bf', 22: '#ff0040', 23: 'black' };
 	}
 	const appConfiguration = new AppConfiguration();
-
-	class ResourceLoader {
-	    static loader = new TextureLoader();
-
-	    static loadSat(aTile, onLoad, onFail) {
-	        const x = aTile.x;
-	        const y = aTile.y;
-	        const z = aTile.zoom;
-
-	        return ResourceLoader.loader.load(`images/eastAnatoliaSat/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
-	    }
-
-	    static loadDem(x, y, z, onLoad, onFail) {
-	        return ResourceLoader.loader.load(`images/demTiles13/${z}/${x}/${y}.png`, onLoad, undefined, onFail);
-	    }
-
-	    static loadTex(fileName) {
-	        return ResourceLoader.loader.load('images/' + fileName);
-	    }
-	}
 
 	function zoomToNTiles(zoom) {
 	    return 2 ** (zoom);
@@ -46367,12 +46307,14 @@
 
 	class MapBuilderBase {
 	    
-	    constructor(controls) {
+	    constructor(controls, mapCanvas) {
 	        if (new.target === MapBuilderBase) {
 	            throw new TypeError("Cannot construct Abstract instances directly");
 	        }
 
 	        this.controls = controls;
+	        this.mapCanvas = mapCanvas;
+	        
 	        this.defaultTex = ResourceLoader.loadTex('water512.jpg');
 	        this.rootTile = new ATile(-appConfiguration.sceneWidthHalf, -appConfiguration.sceneHeightHalf, appConfiguration.sceneWidth, appConfiguration.sceneHeight, 0);
 	    }
@@ -46391,8 +46333,8 @@
 	}
 
 	class MapBuilder2D extends MapBuilderBase {
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	        this.tileGeometries = [];
 	    }
 
@@ -46440,11 +46382,12 @@
 	        const mat2d = new MeshBasicMaterial({
 	            map: this.defaultTex,
 	        });
-
+	        const scope = this;
 	        ResourceLoader.loadSat(
 	            aTile,
 	            function (texture) {
 	                mat2d.map = texture;
+	                scope.mapCanvas.triggerRender();
 	            },
 	            undefined
 	        );
@@ -46468,8 +46411,8 @@
 	class MapBuilder3DBase extends MapBuilderBase {
 	    distantTilesThreshold = 2;
 
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	    }
 
 	    switch() {
@@ -46507,8 +46450,8 @@
 	}
 
 	class MapBuilder3DMesh extends MapBuilder3DBase {
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	    }
 
 	    buildMat(aTile) {
@@ -46516,10 +46459,12 @@
 	            map: this.defaultTex,
 	        });
 
+	        const scope = this;
 	        ResourceLoader.loadSat(
 	            aTile,
 	            function (texture) {
 	                mat2d.map = texture;
+	                scope.mapCanvas.triggerRender();
 	            },
 	            undefined
 	        );
@@ -46647,8 +46592,8 @@ void main()
 `;
 
 	class MapBuilder3DShaderBase extends MapBuilder3DBase {
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	        
 	        this.noBumpTex = null;
 	        this.tileGeometries = [];
@@ -46671,6 +46616,7 @@ void main()
 	    }
 
 	    buildMat(aTile) {
+	        const scope = this;
 	        const uniforms = {
 	            bumpScale: { type: "f", value: appConfiguration.bumpScale },
 	            bumpTexture: { type: "t", value: this.noBumpTex }
@@ -46688,6 +46634,7 @@ void main()
 	            aTile.x, aTile.y, aTile.zoom,
 	            function (texture) {
 	                uniforms['bumpTexture'] = { type: "t", value: texture };
+	                scope.mapCanvas.triggerRender();
 	            }
 	        );
 
@@ -46728,8 +46675,8 @@ void main()
 `;
 
 	class MapBuilder3DShaderColor extends MapBuilder3DShaderBase {
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	    }
 
 	    getFragmentShader() {
@@ -46749,8 +46696,8 @@ void main()
 `;
 
 	class MapBuilder3DShaderSat extends MapBuilder3DShaderBase {
-	    constructor(controls) {
-	        super(controls);
+	    constructor(controls, mapCanvas) {
+	        super(controls, mapCanvas);
 	    }
 
 
@@ -46758,10 +46705,12 @@ void main()
 	        const mat2d = super.buildMat(aTile);
 	        mat2d.uniforms['satTexture'] = { type: "t", value: this.noBumpTex };
 
+	        const scope = this;
 	        ResourceLoader.loadSat(
 	            aTile,
 	            function (texture) {
 	                mat2d.uniforms['satTexture'] = { type: "t", value: texture };
+	                scope.mapCanvas.triggerRender();
 	            }
 	        );
 
@@ -46773,7 +46722,83 @@ void main()
 	    }
 	}
 
-	let camera, scene, renderer, controls, stats, mapCanvas, gui, mapBuilders = new Map();
+	class MapCanvas {
+	    constructor(scene, camera, controls) {
+	        this.dirty = false;
+	        this.visibleTiles = [];
+	        this.frustum = new Frustum();
+	        this.ground = new Group();
+
+	        this.scene = scene;
+	        this.camera = camera;
+	        this.controls = controls;
+
+	        this.mapBuilders = this.getMapBuilders(controls);
+	        this.mapBuilderKey = '2D';
+
+	        this.mapBuilder = this.mapBuilders.get(this.mapBuilderKey);
+	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+	            console.error("No mapBuilder found for key", this.mapBuilderKey);
+	        }
+	        this.mapBuilder.switch();
+	    }
+
+	    getMapBuilders(controls) {
+	        const mapBuilders = new Map();
+	        mapBuilders.set('2D', new MapBuilder2D(controls, this));
+	        mapBuilders.set('3DMesh', new MapBuilder3DMesh(controls, this));
+	        mapBuilders.set('3DShaderColor', new MapBuilder3DShaderColor(controls, this));
+	        mapBuilders.set('3DShaderSat', new MapBuilder3DShaderSat(controls, this));
+
+	        return mapBuilders;
+	    }
+
+	    build() {
+	        this.scene.add(this.ground);
+	    }
+
+	    render() {
+	        if (!this.dirty) return false;
+
+	        this.visibleTiles.forEach(tile => tile.hide());
+	        this.visibleTiles = [];
+
+	        const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
+	        this.frustum.setFromProjectionMatrix(matrix);
+
+	        this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
+
+	        this.visibleTiles.forEach(tile => {
+	            if (tile.plane == null) {
+	                tile.plane = this.mapBuilder.buildMesh(tile);
+	                this.ground.add(tile.plane);
+	            }
+	        });
+	        this.visibleTiles.forEach(tile => tile.show());
+
+	        this.dirty = false;
+	        return true;
+	    }
+
+	    triggerRender() {
+	        this.dirty = true;
+	    }
+
+	    switchMapBuilder() {
+	        this.mapBuilder = this.mapBuilders.get(this.mapBuilderKey);
+	        if (this.mapBuilder === 'undefined' || this.mapBuilder == null) {
+	            console.error("No mapBuilder found for key", this.mapBuilderKey);
+	        }
+	        this.mapBuilder.switch();
+	        this.triggerRender();
+	    }
+
+	    getMapBuilderKeys() {
+	        return Array.from(this.mapBuilders.keys());
+	    }
+	}
+
+	let camera, scene, renderer, controls, stats, mapCanvas, gui;
 
 	const options = {
 		go2d: function () {
@@ -46816,12 +46841,7 @@ void main()
 
 			controls.addEventListener('change', () => mapCanvas.triggerRender());
 
-			mapBuilders['2D'] = new MapBuilder2D(controls);
-			mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
-			mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
-			mapBuilders['3DShaderSat'] = new MapBuilder3DShaderSat(controls);
-
-			mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
+			mapCanvas = new MapCanvas(scene, camera, controls);
 			mapCanvas.build();
 			mapCanvas.triggerRender();
 
@@ -46829,7 +46849,7 @@ void main()
 			buildGui(mapCanvas);
 
 			const buildersFolder = gui.addFolder('Builders');
-			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D', '3DMesh', '3DShaderColor', '3DShaderSat']);
+			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(mapCanvas.getMapBuilderKeys());
 			builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 			animate();
@@ -46865,8 +46885,9 @@ void main()
 	}
 
 	function render() {
-		mapCanvas.render();
-		renderer.render(scene, camera);
+		const shouldRender = mapCanvas.render();
+		if (shouldRender)
+			renderer.render(scene, camera);
 	}
 
 	function buildGui(mapCanvas) {

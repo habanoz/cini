@@ -5,8 +5,8 @@ import appConfiguration from '../utils/AppConfiguration';
 import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
 
 class MapBuilder3DMesh extends MapBuilder3DBase {
-    constructor(controls) {
-        super(controls);
+    constructor(controls, mapCanvas) {
+        super(controls, mapCanvas);
     }
 
     buildMat(aTile) {
@@ -14,10 +14,12 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
             map: this.defaultTex,
         });
 
+        const scope = this;
         ResourceLoader.loadSat(
             aTile,
             function (texture) {
                 mat2d.map = texture;
+                scope.mapCanvas.triggerRender();
             },
             undefined
         );

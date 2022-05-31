@@ -4,12 +4,8 @@ import { MapControls } from './controls/StagedZoomOrbitControl';
 import Stats from 'stats-js';
 import MapCanvas from './MapCanvas';
 import appConfiguration from './utils/AppConfiguration';
-import MapBuilder2D from './mbuilders/MapBuilder2D';
-import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
-import MapBuilder3DShaderColor from './mbuilders/MapBuilder3DShaderColor';
-import MapBuilder3DShaderSat from './mbuilders/MapBuilder3DShaderSat';
 
-let camera, scene, renderer, controls, stats, mapCanvas, gui, mapBuilders = new Map();
+let camera, scene, renderer, controls, stats, mapCanvas, gui;
 
 const options = {
 	go2d: function () {
@@ -52,12 +48,7 @@ class App {
 
 		controls.addEventListener('change', () => mapCanvas.triggerRender());
 
-		mapBuilders['2D'] = new MapBuilder2D(controls);
-		mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
-		mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
-		mapBuilders['3DShaderSat'] = new MapBuilder3DShaderSat(controls);
-
-		mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
+		mapCanvas = new MapCanvas(scene, camera, controls);
 		mapCanvas.build();
 		mapCanvas.triggerRender();
 
@@ -65,7 +56,7 @@ class App {
 		buildGui(mapCanvas);
 
 		const buildersFolder = gui.addFolder('Builders');
-		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D', '3DMesh', '3DShaderColor', '3DShaderSat']);
+		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(mapCanvas.getMapBuilderKeys());
 		builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 		animate();
@@ -101,8 +92,9 @@ function animate() {
 }
 
 function render() {
-	mapCanvas.render();
-	renderer.render(scene, camera);
+	const shouldRender = mapCanvas.render();
+	if (shouldRender)
+		renderer.render(scene, camera);
 }
 
 function buildGui(mapCanvas) {

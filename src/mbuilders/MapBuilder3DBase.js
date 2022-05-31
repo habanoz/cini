@@ -4,8 +4,8 @@ import { Box3 } from 'three';
 class MapBuilder3DBase extends MapBuilderBase {
     distantTilesThreshold = 2;
 
-    constructor(controls) {
-        super(controls);
+    constructor(controls, mapCanvas) {
+        super(controls, mapCanvas);
     }
 
     switch() {

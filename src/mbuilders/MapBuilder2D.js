@@ -5,8 +5,8 @@ import appConfiguration from '../utils/AppConfiguration';
 import { MeshBasicMaterial, Mesh, PlaneGeometry, Box3 } from 'three';
 
 class MapBuilder2D extends MapBuilderBase {
-    constructor(controls) {
-        super(controls);
+    constructor(controls, mapCanvas) {
+        super(controls, mapCanvas);
         this.tileGeometries = [];
     }
 
@@ -54,11 +54,12 @@ class MapBuilder2D extends MapBuilderBase {
         const mat2d = new MeshBasicMaterial({
             map: this.defaultTex,
         });
-
+        const scope = this;
         ResourceLoader.loadSat(
             aTile,
             function (texture) {
                 mat2d.map = texture;
+                scope.mapCanvas.triggerRender();
             },
             undefined
         );

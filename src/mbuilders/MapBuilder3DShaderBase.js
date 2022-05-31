@@ -6,8 +6,8 @@ import { ShaderMaterial, Mesh, PlaneGeometry } from 'three';
 import heightVertShader from './shaders/heightVert';
 
 class MapBuilder3DShaderBase extends MapBuilder3DBase {
-    constructor(controls) {
-        super(controls);
+    constructor(controls, mapCanvas) {
+        super(controls, mapCanvas);
         
         this.noBumpTex = null;
         this.tileGeometries = [];
@@ -48,6 +48,7 @@ class MapBuilder3DShaderBase extends MapBuilder3DBase {
             aTile.x, aTile.y, aTile.zoom,
             function (texture) {
                 uniforms['bumpTexture'] = { type: "t", value: texture };
+                scope.mapCanvas.triggerRender();
             }
         );
 
