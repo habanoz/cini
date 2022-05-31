@@ -46334,8 +46334,8 @@
 	        this.plane.visible = true;
 
 	        if (appConfiguration.showTileBorders) {
-	            this.plane.scale.x = 0.999;
-	            this.plane.scale.y = 0.999;
+	            this.plane.scale.x = 0.99;
+	            this.plane.scale.y = 0.99;
 	        }
 	    }
 
@@ -46785,8 +46785,7 @@ void main()
 	class App {
 
 		init() {
-
-			camera = new PerspectiveCamera(65, window.innerWidth / window.innerHeight, appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
+			camera = new PerspectiveCamera(getFov(), getAspect(), appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
 			camera.up = new Vector3(0, 0, 1);
 			camera.position.set(0, 0, appConfiguration.initialElevation);
 
@@ -46830,7 +46829,7 @@ void main()
 			buildGui(mapCanvas);
 
 			const buildersFolder = gui.addFolder('Builders');
-			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D','3DMesh','3DShaderColor','3DShaderSat']);
+			const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(['2D', '3DMesh', '3DShaderColor', '3DShaderSat']);
 			builderKeyControl.onChange(() => mapCanvas.switchMapBuilder());
 
 			animate();
@@ -46838,9 +46837,18 @@ void main()
 
 	}
 
+	function getFov() {
+		return 2 * Math.atan(window.innerHeight / (2 * 500)) * (180 / Math.PI);
+	}
+
+	function getAspect() {
+		return window.innerWidth / window.innerHeight;
+	}
+
 	function onWindowResize() {
 
-		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.aspect = getAspect();
+		camera.fov = getFov();
 		camera.updateProjectionMatrix();
 
 		renderer.setSize(window.innerWidth, window.innerHeight);
@@ -46864,7 +46872,9 @@ void main()
 	function buildGui(mapCanvas) {
 		gui.add(controls, 'screenSpacePanning');
 		gui.add(controls.pSphere, 'radius').onChange(render).listen();
-		gui.add(camera.position, 'y').onChange(render).listen();
+		gui.add(controls.pSphere, 'phi').onChange(render).listen();
+		gui.add(camera, 'fov').onChange(onWindowResize);
+		gui.add(camera.position, 'z').onChange(render).listen();
 		gui.add(controls, 'zoomLevel').listen();
 		gui.add(options, 'go2d');
 		gui.add(appConfiguration, 'showTileBorders').onChange(mapCanvas.triggerRender());
