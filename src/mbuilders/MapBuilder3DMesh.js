@@ -83,11 +83,11 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
         const context = canvas.getContext('2d');
         context.drawImage(bTexture.image, 0, 0);
         var data = context.getImageData(0, 0, canvas.width, canvas.height);
-
+        const bumpScale = appConfiguration.bumpScale/30;
 
         for (let j = 0; j < hVerts; j++) {
             for (let i = 0; i < wVerts; i++) {
-                pos.setZ(index, data.data[index * 4]);
+                pos.setZ(index, data.data[index * 4]*bumpScale);
                 index++;
             }
         }
@@ -99,7 +99,7 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
             index = 0;
             var offset = hVerts * wVerts - 256;
             for (let j = 0; j < hVerts; j++) {
-                pos.setZ(index, data.data[offset * 4]);
+                pos.setZ(index, data.data[offset * 4]*bumpScale);
                 index++;
                 offset++;
             }
@@ -112,7 +112,7 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
             index = 0;
             offset = 0;
             for (let j = 0; j < wVerts; j++) {
-                pos.setZ(index, data.data[(index + 255) * 4]);
+                pos.setZ(index, data.data[(index + 255) * 4]*bumpScale);
                 index += 256;
             }
         }
@@ -121,6 +121,11 @@ class MapBuilder3DMesh extends MapBuilder3DBase {
         gridPlaneGeometry.computeBoundingBox();
 
         //tile.box.copy(gridPlaneGeometry.boundingBox);//.applyMatrix4( planeGrid.matrixWorld );
+
+        //planeGrid.castShadow = true; //default is false
+        //planeGrid.receiveShadow = false; //default
+
+        this.mapCanvas.triggerRender();
     }
 }
 

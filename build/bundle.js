@@ -247,6 +247,8 @@
 
 	}
 
+	let _seed = 1234567;
+
 
 	const DEG2RAD = Math.PI / 180;
 	const RAD2DEG = 180 / Math.PI;
@@ -282,10 +284,115 @@
 
 	}
 
+	// Linear mapping from range <a1, a2> to range <b1, b2>
+	function mapLinear( x, a1, a2, b1, b2 ) {
+
+		return b1 + ( x - a1 ) * ( b2 - b1 ) / ( a2 - a1 );
+
+	}
+
+	// https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/inverse-lerp-a-super-useful-yet-often-overlooked-function-r5230/
+	function inverseLerp( x, y, value ) {
+
+		if ( x !== y ) {
+
+			return ( value - x ) / ( y - x );
+
+		} else {
+
+			return 0;
+
+		}
+
+	}
+
 	// https://en.wikipedia.org/wiki/Linear_interpolation
 	function lerp( x, y, t ) {
 
 		return ( 1 - t ) * x + t * y;
+
+	}
+
+	// http://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
+	function damp( x, y, lambda, dt ) {
+
+		return lerp( x, y, 1 - Math.exp( - lambda * dt ) );
+
+	}
+
+	// https://www.desmos.com/calculator/vcsjnyz7x4
+	function pingpong( x, length = 1 ) {
+
+		return length - Math.abs( euclideanModulo( x, length * 2 ) - length );
+
+	}
+
+	// http://en.wikipedia.org/wiki/Smoothstep
+	function smoothstep( x, min, max ) {
+
+		if ( x <= min ) return 0;
+		if ( x >= max ) return 1;
+
+		x = ( x - min ) / ( max - min );
+
+		return x * x * ( 3 - 2 * x );
+
+	}
+
+	function smootherstep( x, min, max ) {
+
+		if ( x <= min ) return 0;
+		if ( x >= max ) return 1;
+
+		x = ( x - min ) / ( max - min );
+
+		return x * x * x * ( x * ( x * 6 - 15 ) + 10 );
+
+	}
+
+	// Random integer from <low, high> interval
+	function randInt( low, high ) {
+
+		return low + Math.floor( Math.random() * ( high - low + 1 ) );
+
+	}
+
+	// Random float from <low, high> interval
+	function randFloat( low, high ) {
+
+		return low + Math.random() * ( high - low );
+
+	}
+
+	// Random float from <-range/2, range/2> interval
+	function randFloatSpread( range ) {
+
+		return range * ( 0.5 - Math.random() );
+
+	}
+
+	// Deterministic pseudo-random float in the interval [ 0, 1 ]
+	function seededRandom( s ) {
+
+		if ( s !== undefined ) _seed = s % 2147483647;
+
+		// Park-Miller algorithm
+
+		_seed = _seed * 16807 % 2147483647;
+
+		return ( _seed - 1 ) / 2147483646;
+
+	}
+
+	function degToRad( degrees ) {
+
+		return degrees * DEG2RAD;
+
+	}
+
+	function radToDeg( radians ) {
+
+		return radians * RAD2DEG;
 
 	}
 
@@ -295,11 +402,99 @@
 
 	}
 
+	function ceilPowerOfTwo( value ) {
+
+		return Math.pow( 2, Math.ceil( Math.log( value ) / Math.LN2 ) );
+
+	}
+
 	function floorPowerOfTwo( value ) {
 
 		return Math.pow( 2, Math.floor( Math.log( value ) / Math.LN2 ) );
 
 	}
+
+	function setQuaternionFromProperEuler( q, a, b, c, order ) {
+
+		// Intrinsic Proper Euler Angles - see https://en.wikipedia.org/wiki/Euler_angles
+
+		// rotations are applied to the axes in the order specified by 'order'
+		// rotation by angle 'a' is applied first, then by angle 'b', then by angle 'c'
+		// angles are in radians
+
+		const cos = Math.cos;
+		const sin = Math.sin;
+
+		const c2 = cos( b / 2 );
+		const s2 = sin( b / 2 );
+
+		const c13 = cos( ( a + c ) / 2 );
+		const s13 = sin( ( a + c ) / 2 );
+
+		const c1_3 = cos( ( a - c ) / 2 );
+		const s1_3 = sin( ( a - c ) / 2 );
+
+		const c3_1 = cos( ( c - a ) / 2 );
+		const s3_1 = sin( ( c - a ) / 2 );
+
+		switch ( order ) {
+
+			case 'XYX':
+				q.set( c2 * s13, s2 * c1_3, s2 * s1_3, c2 * c13 );
+				break;
+
+			case 'YZY':
+				q.set( s2 * s1_3, c2 * s13, s2 * c1_3, c2 * c13 );
+				break;
+
+			case 'ZXZ':
+				q.set( s2 * c1_3, s2 * s1_3, c2 * s13, c2 * c13 );
+				break;
+
+			case 'XZX':
+				q.set( c2 * s13, s2 * s3_1, s2 * c3_1, c2 * c13 );
+				break;
+
+			case 'YXY':
+				q.set( s2 * c3_1, c2 * s13, s2 * s3_1, c2 * c13 );
+				break;
+
+			case 'ZYZ':
+				q.set( s2 * s3_1, s2 * c3_1, c2 * s13, c2 * c13 );
+				break;
+
+			default:
+				console.warn( 'THREE.MathUtils: .setQuaternionFromProperEuler() encountered an unknown order: ' + order );
+
+		}
+
+	}
+
+	var MathUtils = /*#__PURE__*/Object.freeze({
+		__proto__: null,
+		DEG2RAD: DEG2RAD,
+		RAD2DEG: RAD2DEG,
+		generateUUID: generateUUID,
+		clamp: clamp,
+		euclideanModulo: euclideanModulo,
+		mapLinear: mapLinear,
+		inverseLerp: inverseLerp,
+		lerp: lerp,
+		damp: damp,
+		pingpong: pingpong,
+		smoothstep: smoothstep,
+		smootherstep: smootherstep,
+		randInt: randInt,
+		randFloat: randFloat,
+		randFloatSpread: randFloatSpread,
+		seededRandom: seededRandom,
+		degToRad: degToRad,
+		radToDeg: radToDeg,
+		isPowerOfTwo: isPowerOfTwo,
+		ceilPowerOfTwo: ceilPowerOfTwo,
+		floorPowerOfTwo: floorPowerOfTwo,
+		setQuaternionFromProperEuler: setQuaternionFromProperEuler
+	});
 
 	class Vector2 {
 
@@ -27682,6 +27877,40 @@
 
 	WebGL1Renderer.prototype.isWebGL1Renderer = true;
 
+	class Fog {
+
+		constructor( color, near = 1, far = 1000 ) {
+
+			this.name = '';
+
+			this.color = new Color( color );
+
+			this.near = near;
+			this.far = far;
+
+		}
+
+		clone() {
+
+			return new Fog( this.color, this.near, this.far );
+
+		}
+
+		toJSON( /* meta */ ) {
+
+			return {
+				type: 'Fog',
+				color: this.color.getHex(),
+				near: this.near,
+				far: this.far
+			};
+
+		}
+
+	}
+
+	Fog.prototype.isFog = true;
+
 	class Scene extends Object3D {
 
 		constructor() {
@@ -46226,8 +46455,8 @@
 
 	    initialElevation = 4_000_000;
 	    cameraMaxDist = this.initialElevation;
-	    cameraMinDist = 200;
-	    bumpScale = 100.0;
+	    cameraMinDist = 1;
+	    bumpScale = 60.0;
 	    groundElevation = -30;
 	    zoomColorMap = { 0: '#ff0000', 1: '#ff8000', 2: '#ffff00', 3: '#80ff00', 4: '#00ff00', 5: '#00ff80', 6: '#00ffff', 7: '#0080ff', 8: '#0000ff', 9: '#8000ff', 10: '#ff00ff', 11: '#ff0080', 12: '#ffbf00', 13: '#bfff00', 14: '#40ff00', 15: '#00ff40', 16: '00ffbf', 17: '#00bfff', 18: '	#0040ff', 19: '#4000ff', 20: '#bf00ff', 21: '#ff00bf', 22: '#ff0040', 23: 'black' };
 	}
@@ -46528,11 +46757,11 @@
 	        const context = canvas.getContext('2d');
 	        context.drawImage(bTexture.image, 0, 0);
 	        var data = context.getImageData(0, 0, canvas.width, canvas.height);
-
+	        const bumpScale = appConfiguration.bumpScale/30;
 
 	        for (let j = 0; j < hVerts; j++) {
 	            for (let i = 0; i < wVerts; i++) {
-	                pos.setZ(index, data.data[index * 4]);
+	                pos.setZ(index, data.data[index * 4]*bumpScale);
 	                index++;
 	            }
 	        }
@@ -46544,7 +46773,7 @@
 	            index = 0;
 	            var offset = hVerts * wVerts - 256;
 	            for (let j = 0; j < hVerts; j++) {
-	                pos.setZ(index, data.data[offset * 4]);
+	                pos.setZ(index, data.data[offset * 4]*bumpScale);
 	                index++;
 	                offset++;
 	            }
@@ -46557,7 +46786,7 @@
 	            index = 0;
 	            offset = 0;
 	            for (let j = 0; j < wVerts; j++) {
-	                pos.setZ(index, data.data[(index + 255) * 4]);
+	                pos.setZ(index, data.data[(index + 255) * 4]*bumpScale);
 	                index += 256;
 	            }
 	        }
@@ -46566,6 +46795,11 @@
 	        gridPlaneGeometry.computeBoundingBox();
 
 	        //tile.box.copy(gridPlaneGeometry.boundingBox);//.applyMatrix4( planeGrid.matrixWorld );
+
+	        //planeGrid.castShadow = true; //default is false
+	        //planeGrid.receiveShadow = false; //default
+
+	        this.mapCanvas.triggerRender();
 	    }
 	}
 
@@ -46618,7 +46852,7 @@ void main()
 	    buildMat(aTile) {
 	        const scope = this;
 	        const uniforms = {
-	            bumpScale: { type: "f", value: appConfiguration.bumpScale },
+	            bumpScale: { type: "f", value: appConfiguration.bumpScale * 7 },
 	            bumpTexture: { type: "t", value: this.noBumpTex }
 	        };
 	        
@@ -46776,6 +47010,16 @@ void main()
 	        });
 	        this.visibleTiles.forEach(tile => tile.show());
 
+	        if (this.controls.zoomLevel > 9) {
+	            const color = 'lightblue';
+	            const near = 1_000;
+	            const far = 15_000;
+	            this.scene.fog = new Fog(color, near, far);
+	            this.scene.background = color;
+	        } else {
+	            this.scene.fog = null;
+	        }
+
 	        this.dirty = false;
 	        return true;
 	    }
@@ -46798,6 +47042,215 @@ void main()
 	    }
 	}
 
+	/**
+	 * Based on "A Practical Analytic Model for Daylight"
+	 * aka The Preetham Model, the de facto standard analytic skydome model
+	 * https://www.researchgate.net/publication/220720443_A_Practical_Analytic_Model_for_Daylight
+	 *
+	 * First implemented by Simon Wallner
+	 * http://simonwallner.at/project/atmospheric-scattering/
+	 *
+	 * Improved by Martin Upitis
+	 * http://blenderartists.org/forum/showthread.php?245954-preethams-sky-impementation-HDR
+	 *
+	 * Three.js integration by zz85 http://twitter.com/blurspline
+	*/
+
+	class Sky extends Mesh {
+
+		constructor() {
+
+			const shader = Sky.SkyShader;
+
+			const material = new ShaderMaterial( {
+				name: 'SkyShader',
+				fragmentShader: shader.fragmentShader,
+				vertexShader: shader.vertexShader,
+				uniforms: UniformsUtils.clone( shader.uniforms ),
+				side: BackSide,
+				depthWrite: false
+			} );
+
+			super( new BoxGeometry( 1, 1, 1 ), material );
+
+		}
+
+	}
+
+	Sky.prototype.isSky = true;
+
+	Sky.SkyShader = {
+
+		uniforms: {
+			'turbidity': { value: 2 },
+			'rayleigh': { value: 1 },
+			'mieCoefficient': { value: 0.005 },
+			'mieDirectionalG': { value: 0.8 },
+			'sunPosition': { value: new Vector3() },
+			'up': { value: new Vector3( 0, 1, 0 ) }
+		},
+
+		vertexShader: /* glsl */`
+		uniform vec3 sunPosition;
+		uniform float rayleigh;
+		uniform float turbidity;
+		uniform float mieCoefficient;
+		uniform vec3 up;
+
+		varying vec3 vWorldPosition;
+		varying vec3 vSunDirection;
+		varying float vSunfade;
+		varying vec3 vBetaR;
+		varying vec3 vBetaM;
+		varying float vSunE;
+
+		// constants for atmospheric scattering
+		const float e = 2.71828182845904523536028747135266249775724709369995957;
+		const float pi = 3.141592653589793238462643383279502884197169;
+
+		// wavelength of used primaries, according to preetham
+		const vec3 lambda = vec3( 680E-9, 550E-9, 450E-9 );
+		// this pre-calcuation replaces older TotalRayleigh(vec3 lambda) function:
+		// (8.0 * pow(pi, 3.0) * pow(pow(n, 2.0) - 1.0, 2.0) * (6.0 + 3.0 * pn)) / (3.0 * N * pow(lambda, vec3(4.0)) * (6.0 - 7.0 * pn))
+		const vec3 totalRayleigh = vec3( 5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5 );
+
+		// mie stuff
+		// K coefficient for the primaries
+		const float v = 4.0;
+		const vec3 K = vec3( 0.686, 0.678, 0.666 );
+		// MieConst = pi * pow( ( 2.0 * pi ) / lambda, vec3( v - 2.0 ) ) * K
+		const vec3 MieConst = vec3( 1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14 );
+
+		// earth shadow hack
+		// cutoffAngle = pi / 1.95;
+		const float cutoffAngle = 1.6110731556870734;
+		const float steepness = 1.5;
+		const float EE = 1000.0;
+
+		float sunIntensity( float zenithAngleCos ) {
+			zenithAngleCos = clamp( zenithAngleCos, -1.0, 1.0 );
+			return EE * max( 0.0, 1.0 - pow( e, -( ( cutoffAngle - acos( zenithAngleCos ) ) / steepness ) ) );
+		}
+
+		vec3 totalMie( float T ) {
+			float c = ( 0.2 * T ) * 10E-18;
+			return 0.434 * c * MieConst;
+		}
+
+		void main() {
+
+			vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+			vWorldPosition = worldPosition.xyz;
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			gl_Position.z = gl_Position.w; // set z to camera.far
+
+			vSunDirection = normalize( sunPosition );
+
+			vSunE = sunIntensity( dot( vSunDirection, up ) );
+
+			vSunfade = 1.0 - clamp( 1.0 - exp( ( sunPosition.y / 450000.0 ) ), 0.0, 1.0 );
+
+			float rayleighCoefficient = rayleigh - ( 1.0 * ( 1.0 - vSunfade ) );
+
+			// extinction (absorbtion + out scattering)
+			// rayleigh coefficients
+			vBetaR = totalRayleigh * rayleighCoefficient;
+
+			// mie coefficients
+			vBetaM = totalMie( turbidity ) * mieCoefficient;
+
+		}`,
+
+		fragmentShader: /* glsl */`
+		varying vec3 vWorldPosition;
+		varying vec3 vSunDirection;
+		varying float vSunfade;
+		varying vec3 vBetaR;
+		varying vec3 vBetaM;
+		varying float vSunE;
+
+		uniform float mieDirectionalG;
+		uniform vec3 up;
+
+		const vec3 cameraPos = vec3( 0.0, 0.0, 0.0 );
+
+		// constants for atmospheric scattering
+		const float pi = 3.141592653589793238462643383279502884197169;
+
+		const float n = 1.0003; // refractive index of air
+		const float N = 2.545E25; // number of molecules per unit volume for air at 288.15K and 1013mb (sea level -45 celsius)
+
+		// optical length at zenith for molecules
+		const float rayleighZenithLength = 8.4E3;
+		const float mieZenithLength = 1.25E3;
+		// 66 arc seconds -> degrees, and the cosine of that
+		const float sunAngularDiameterCos = 0.999956676946448443553574619906976478926848692873900859324;
+
+		// 3.0 / ( 16.0 * pi )
+		const float THREE_OVER_SIXTEENPI = 0.05968310365946075;
+		// 1.0 / ( 4.0 * pi )
+		const float ONE_OVER_FOURPI = 0.07957747154594767;
+
+		float rayleighPhase( float cosTheta ) {
+			return THREE_OVER_SIXTEENPI * ( 1.0 + pow( cosTheta, 2.0 ) );
+		}
+
+		float hgPhase( float cosTheta, float g ) {
+			float g2 = pow( g, 2.0 );
+			float inverse = 1.0 / pow( 1.0 - 2.0 * g * cosTheta + g2, 1.5 );
+			return ONE_OVER_FOURPI * ( ( 1.0 - g2 ) * inverse );
+		}
+
+		void main() {
+
+			vec3 direction = normalize( vWorldPosition - cameraPos );
+
+			// optical length
+			// cutoff angle at 90 to avoid singularity in next formula.
+			float zenithAngle = acos( max( 0.0, dot( up, direction ) ) );
+			float inverse = 1.0 / ( cos( zenithAngle ) + 0.15 * pow( 93.885 - ( ( zenithAngle * 180.0 ) / pi ), -1.253 ) );
+			float sR = rayleighZenithLength * inverse;
+			float sM = mieZenithLength * inverse;
+
+			// combined extinction factor
+			vec3 Fex = exp( -( vBetaR * sR + vBetaM * sM ) );
+
+			// in scattering
+			float cosTheta = dot( direction, vSunDirection );
+
+			float rPhase = rayleighPhase( cosTheta * 0.5 + 0.5 );
+			vec3 betaRTheta = vBetaR * rPhase;
+
+			float mPhase = hgPhase( cosTheta, mieDirectionalG );
+			vec3 betaMTheta = vBetaM * mPhase;
+
+			vec3 Lin = pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * ( 1.0 - Fex ), vec3( 1.5 ) );
+			Lin *= mix( vec3( 1.0 ), pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * Fex, vec3( 1.0 / 2.0 ) ), clamp( pow( 1.0 - dot( up, vSunDirection ), 5.0 ), 0.0, 1.0 ) );
+
+			// nightsky
+			float theta = acos( direction.y ); // elevation --> y-axis, [-pi/2, pi/2]
+			float phi = atan( direction.z, direction.x ); // azimuth --> x-axis [-pi/2, pi/2]
+			vec2 uv = vec2( phi, theta ) / vec2( 2.0 * pi, pi ) + vec2( 0.5, 0.0 );
+			vec3 L0 = vec3( 0.1 ) * Fex;
+
+			// composition + solar disc
+			float sundisk = smoothstep( sunAngularDiameterCos, sunAngularDiameterCos + 0.00002, cosTheta );
+			L0 += ( vSunE * 19000.0 * Fex ) * sundisk;
+
+			vec3 texColor = ( Lin + L0 ) * 0.04 + vec3( 0.0, 0.0003, 0.00075 );
+
+			vec3 retColor = pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
+
+			gl_FragColor = vec4( retColor, 1.0 );
+
+			#include <tonemapping_fragment>
+			#include <encodings_fragment>
+
+		}`
+
+	};
+
 	let camera, scene, renderer, controls, stats, mapCanvas, gui;
 
 	const options = {
@@ -46816,6 +47269,9 @@ void main()
 
 			scene = new Scene();
 
+			this.addSky();
+
+
 			stats = new Stats();
 			document.body.appendChild(stats.dom);
 
@@ -46825,6 +47281,9 @@ void main()
 			renderer.setPixelRatio(window.devicePixelRatio);
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			//renderer.shadowMap.enabled = true;
+			renderer.outputEncoding = sRGBEncoding;
+			renderer.toneMapping = ACESFilmicToneMapping;
+			renderer.toneMappingExposure = 0.4;
 
 			document.body.appendChild(renderer.domElement);
 
@@ -46853,6 +47312,36 @@ void main()
 			animate();
 		}
 
+
+		addSky() {
+			const sky = new Sky();
+			sky.scale.setScalar(4000000);
+			sky.material.uniforms.up.value.set(0, 0, 1);
+			scene.add(sky);
+
+			const effectController = {
+				turbidity: 10,
+				rayleigh: 3,
+				mieCoefficient: 0.05,
+				mieDirectionalG: 0.9,
+				elevation: 3000,
+				azimuth: 180
+			};
+
+			const sun = new Vector3();
+			const uniforms = sky.material.uniforms;
+			uniforms['turbidity'].value = effectController.turbidity;
+			uniforms['rayleigh'].value = effectController.rayleigh;
+			uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+			uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
+
+			const phi = MathUtils.degToRad(90 - effectController.elevation);
+			const theta = MathUtils.degToRad(effectController.azimuth);
+
+			sun.setFromSphericalCoords(1, phi, theta);
+
+			uniforms['sunPosition'].value.copy(sun);
+		}
 
 		addLight() {
 			var light = new DirectionalLight(0xffffff, 1);

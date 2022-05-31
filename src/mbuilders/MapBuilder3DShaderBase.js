@@ -32,7 +32,7 @@ class MapBuilder3DShaderBase extends MapBuilder3DBase {
     buildMat(aTile) {
         const scope = this;
         const uniforms = {
-            bumpScale: { type: "f", value: appConfiguration.bumpScale },
+            bumpScale: { type: "f", value: appConfiguration.bumpScale * 7 },
             bumpTexture: { type: "t", value: this.noBumpTex }
         };
         

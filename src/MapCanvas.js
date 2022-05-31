@@ -1,4 +1,4 @@
-import { Matrix4, Frustum, Group } from 'three';
+import { Matrix4, Frustum, Group, Fog } from 'three';
 import MapBuilder2D from './mbuilders/MapBuilder2D';
 import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
 import MapBuilder3DShaderColor from './mbuilders/MapBuilder3DShaderColor';
@@ -57,6 +57,16 @@ class MapCanvas {
             }
         })
         this.visibleTiles.forEach(tile => tile.show());
+
+        if (this.controls.zoomLevel > 9) {
+            const color = 'lightblue';
+            const near = 1_000;
+            const far = 15_000;
+            this.scene.fog = new Fog(color, near, far);
+            this.scene.background = color;
+        } else {
+            this.scene.fog = null;
+        }
 
         this.dirty = false;
         return true;

@@ -4,6 +4,7 @@ import { MapControls } from './controls/StagedZoomOrbitControl';
 import Stats from 'stats-js';
 import MapCanvas from './MapCanvas';
 import appConfiguration from './utils/AppConfiguration';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
 let camera, scene, renderer, controls, stats, mapCanvas, gui;
 
@@ -23,6 +24,9 @@ class App {
 
 		scene = new THREE.Scene();
 
+		this.addSky();
+
+
 		stats = new Stats();
 		document.body.appendChild(stats.dom);
 
@@ -32,6 +36,9 @@ class App {
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		//renderer.shadowMap.enabled = true;
+		renderer.outputEncoding = THREE.sRGBEncoding;
+		renderer.toneMapping = THREE.ACESFilmicToneMapping;
+		renderer.toneMappingExposure = 0.4;
 
 		document.body.appendChild(renderer.domElement);
 
@@ -60,6 +67,36 @@ class App {
 		animate();
 	}
 
+
+	addSky() {
+		const sky = new Sky();
+		sky.scale.setScalar(4000000);
+		sky.material.uniforms.up.value.set(0, 0, 1);
+		scene.add(sky);
+
+		const effectController = {
+			turbidity: 10,
+			rayleigh: 3,
+			mieCoefficient: 0.05,
+			mieDirectionalG: 0.9,
+			elevation: 3000,
+			azimuth: 180
+		};
+
+		const sun = new THREE.Vector3();
+		const uniforms = sky.material.uniforms;
+		uniforms['turbidity'].value = effectController.turbidity;
+		uniforms['rayleigh'].value = effectController.rayleigh;
+		uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+		uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
+
+		const phi = THREE.MathUtils.degToRad(90 - effectController.elevation);
+		const theta = THREE.MathUtils.degToRad(effectController.azimuth);
+
+		sun.setFromSphericalCoords(1, phi, theta);
+
+		uniforms['sunPosition'].value.copy(sun);
+	}
 
 	addLight() {
 		var light = new THREE.DirectionalLight(0xffffff, 1);
