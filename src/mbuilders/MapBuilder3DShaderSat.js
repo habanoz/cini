@@ -2,13 +2,9 @@ import MapBuilder3DShaderBase from './MapBuilder3DShaderBase';
 import ResourceLoader from '../loaders/ResourceLoader';
 import fragShader from './shaders/textureFrag';
 
-class MapBuilder3DShader extends MapBuilder3DShaderBase {
+class MapBuilder3DShaderSat extends MapBuilder3DShaderBase {
     constructor(controls) {
         super(controls);
-
-        this.noBumpTex = null;
-
-        this.tileGeometries = [];
     }
 
 
@@ -31,4 +27,4 @@ class MapBuilder3DShader extends MapBuilder3DShaderBase {
     }
 }
 
-export default MapBuilder3DShader;
+export default MapBuilder3DShaderSat;

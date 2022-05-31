@@ -46740,13 +46740,9 @@ void main()
 }
 `;
 
-	class MapBuilder3DShader extends MapBuilder3DShaderBase {
+	class MapBuilder3DShaderSat extends MapBuilder3DShaderBase {
 	    constructor(controls) {
 	        super(controls);
-
-	        this.noBumpTex = null;
-
-	        this.tileGeometries = [];
 	    }
 
 
@@ -46819,7 +46815,7 @@ void main()
 			mapBuilders['2D'] = new MapBuilder2D(controls);
 			mapBuilders['3DMesh'] = new MapBuilder3DMesh(controls);
 			mapBuilders['3DShaderColor'] = new MapBuilder3DShaderColor(controls);
-			mapBuilders['3DShaderSat'] = new MapBuilder3DShader(controls);
+			mapBuilders['3DShaderSat'] = new MapBuilder3DShaderSat(controls);
 
 			mapCanvas = new MapCanvas(scene, camera, controls, mapBuilders, '2D');
 			mapCanvas.build();
