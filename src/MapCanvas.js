@@ -58,9 +58,9 @@ class MapCanvas {
         })
         this.visibleTiles.forEach(tile => tile.show());
 
-        if (this.controls.zoomLevel > 9) {
+        if (this.controls.zoomLevel > 10) {
             const color = 'lightblue';
-            const near = 1_000;
+            const near = 750;
             const far = 15_000;
             this.scene.fog = new Fog(color, near, far);
             this.scene.background = color;

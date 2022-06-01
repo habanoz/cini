@@ -65,6 +65,7 @@ class MapBuilder3DShaderBase extends MapBuilder3DBase {
 
         planeGrid.position.x = tile.centerX;
         planeGrid.position.y = tile.centerY;
+        planeGrid.position.z = -150;
 
         planeGrid.visible = false;
 

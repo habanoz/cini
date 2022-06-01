@@ -6,9 +6,15 @@ import MapCanvas from './MapCanvas';
 import appConfiguration from './utils/AppConfiguration';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
+
 let camera, scene, renderer, controls, stats, mapCanvas, gui;
+const postprocessing = {};
 
 const options = {
+	dof: true,
 	go2d: function () {
 		camera.position.x = controls.target.x;
 		camera.position.y = controls.target.y;
@@ -18,6 +24,8 @@ const options = {
 class App {
 
 	init() {
+		gui = new GUI();
+
 		camera = new THREE.PerspectiveCamera(getFov(), getAspect(), appConfiguration.cameraMinDist, appConfiguration.cameraMaxDist);
 		camera.up = new THREE.Vector3(0, 0, 1);
 		camera.position.set(0, 0, appConfiguration.initialElevation);
@@ -25,7 +33,6 @@ class App {
 		scene = new THREE.Scene();
 
 		this.addSky();
-
 
 		stats = new Stats();
 		document.body.appendChild(stats.dom);
@@ -38,7 +45,7 @@ class App {
 		//renderer.shadowMap.enabled = true;
 		renderer.outputEncoding = THREE.sRGBEncoding;
 		renderer.toneMapping = THREE.ACESFilmicToneMapping;
-		renderer.toneMappingExposure = 0.4;
+		renderer.toneMappingExposure = 0.7;
 
 		document.body.appendChild(renderer.domElement);
 
@@ -57,8 +64,9 @@ class App {
 		mapCanvas.build();
 		mapCanvas.triggerRender();
 
-		gui = new GUI();
 		buildGui(mapCanvas);
+		this.addEffect();
+		gui.add(renderer, 'toneMappingExposure').onChange(mapCanvas.triggerRender);
 
 		const buildersFolder = gui.addFolder('Builders');
 		const builderKeyControl = buildersFolder.add(mapCanvas, 'mapBuilderKey').options(mapCanvas.getMapBuilderKeys());
@@ -98,6 +106,57 @@ class App {
 		uniforms['sunPosition'].value.copy(sun);
 	}
 
+	addEffect() {
+		this.initPostprocessing();
+		renderer.autoClear = false;
+
+		const effectController = {
+
+			focus: 240.0,
+			aperture: 0.5,
+			maxblur: 0.003
+
+		};
+
+		const matChanger = function () {
+
+			postprocessing.bokeh.uniforms['focus'].value = effectController.focus;
+			postprocessing.bokeh.uniforms['aperture'].value = effectController.aperture * 0.00001;
+			postprocessing.bokeh.uniforms['maxblur'].value = effectController.maxblur;
+			
+			mapCanvas.triggerRender();
+		};
+
+		gui.add(effectController, 'focus', 10.0, 3000.0, 10).onChange(matChanger);
+		gui.add(effectController, 'aperture', 0, 10, 0.1).onChange(matChanger);
+		gui.add(effectController, 'maxblur', 0.0, 0.01, 0.001).onChange(matChanger);
+
+		matChanger();
+	}
+
+	initPostprocessing() {
+
+		const renderPass = new RenderPass(scene, camera);
+
+		const bokehPass = new BokehPass(scene, camera, {
+			focus: 1.0,
+			aperture: 0.025,
+			maxblur: 0.01,
+
+			width: window.innerWidth,
+			height: window.innerHeight
+		});
+
+		const composer = new EffectComposer(renderer);
+
+		composer.addPass(renderPass);
+		composer.addPass(bokehPass);
+
+		postprocessing.composer = composer;
+		postprocessing.bokeh = bokehPass;
+
+	}
+
 	addLight() {
 		var light = new THREE.DirectionalLight(0xffffff, 1);
 		light.position.set(0, 1, 1).normalize();
@@ -129,6 +188,8 @@ function onWindowResize() {
 	camera.updateProjectionMatrix();
 
 	renderer.setSize(window.innerWidth, window.innerHeight);
+	postprocessing.composer.setSize(window.innerWidth, window.innerHeight);
+
 	mapCanvas.triggerRender();
 }
 
@@ -145,7 +206,10 @@ function animate() {
 function render() {
 	const shouldRender = mapCanvas.render();
 	if (shouldRender)
-		renderer.render(scene, camera);
+		if (options.dof)
+			postprocessing.composer.render(0.1);
+		else
+			renderer.render(scene, camera);
 }
 
 function buildGui(mapCanvas) {
@@ -155,6 +219,7 @@ function buildGui(mapCanvas) {
 	gui.add(camera, 'fov').onChange(onWindowResize);
 	gui.add(camera.position, 'z').onChange(render).listen();
 	gui.add(controls, 'zoomLevel').listen();
+	gui.add(options, 'dof');
 	gui.add(options, 'go2d');
 	gui.add(appConfiguration, 'showTileBorders').onChange(mapCanvas.triggerRender());
 }
