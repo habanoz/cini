@@ -1,0 +1,11 @@
+
+
+Geometry Buffer (Mesh) Implementation
+        MemoryGUI   MemoryTaskManager
+Start   128MB       200MB          
+Slide   764MB       850MB
+
+Shared Geometry (Shader) Implementation
+        MemoryGUI   MemoryTaskManager
+Start   48MB        120MB          
+Slide   50MB        135MB
