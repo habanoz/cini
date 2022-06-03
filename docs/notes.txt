@@ -9,3 +9,16 @@ Shared Geometry (Shader) Implementation
         MemoryGUI   MemoryTaskManager
 Start   48MB        120MB          
 Slide   50MB        135MB
+
+
+Positioning:
+- Each tile has its coordinates
+- A point can be converted to a coordinate using the tile it belongs and relative position 
+- TODO: we need a transformation between z value of a Geometry and height in km.
+- TODO: We need to find camera distance on each zoom level. 
+- A scale indicator for each zoom level can be drawn to screen using a prefined image: We do not know dpi for the screens. 
+But another image can be used to represent the scale. Window.devicePixelRatio should be considered. Or we can use pixel meter conversion information. 
+- TODO: Will the scale be valid in 3d setting. What should be done?
+- We know pixel meter conversion for each zoom level. (https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/#0/143.07/67.19). 
+We can use this to convert between coordinates and 3d position in map layers.
+
