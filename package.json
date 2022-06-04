@@ -10,6 +10,7 @@
   "author": "HABANOZ",
   "license": "LGPL-3.0-or-later",
   "dependencies": {
+    "collections": "^5.1.13",
     "dat.gui": "^0.7.9",
     "lil-gui": "^0.16.1",
     "stats-js": "^1.0.1",

@@ -1,6 +1,7 @@
 import { Matrix4, Frustum, Group, Fog } from 'three';
 import MapBuilder2D from './mbuilders/MapBuilder2D';
 import MapBuilder3DMesh from './mbuilders/MapBuilder3DMesh';
+import MapBuilder3DBufferedMesh from './mbuilders/MapBuilder3DBufferedMesh';
 import MapBuilder3DShaderColor from './mbuilders/MapBuilder3DShaderColor';
 import MapBuilder3DShaderSat from './mbuilders/MapBuilder3DShaderSat';
 
@@ -31,7 +32,7 @@ class MapCanvas {
         mapBuilders.set('3DMesh', new MapBuilder3DMesh(controls, this));
         mapBuilders.set('3DShaderColor', new MapBuilder3DShaderColor(controls, this));
         mapBuilders.set('3DShaderSat', new MapBuilder3DShaderSat(controls, this));
-
+        mapBuilders.set('3DBufferedMesh', new MapBuilder3DBufferedMesh(controls, this));
         return mapBuilders;
     }
 
@@ -43,6 +44,8 @@ class MapCanvas {
         if (!this.dirty) return false;
 
         this.visibleTiles.forEach(tile => tile.hide());
+        const oldVisibleTiles = [...this.visibleTiles];
+
         this.visibleTiles = [];
 
         const matrix = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);//.multiply(new THREE.Matrix4().makeTranslation(5000,0,100));
@@ -50,12 +53,23 @@ class MapCanvas {
 
         this.mapBuilder.findVisible(this.mapBuilder.rootTile, this.controls.zoomLevel, 0, this.frustum, this.visibleTiles);
 
+        for (const aTile of oldVisibleTiles) {
+            if (!this.visibleTiles.includes(aTile)) {
+                const oldPlane = this.mapBuilder.disposeMesh(aTile);
+                if (oldPlane != undefined)
+                    this.ground.remove(oldPlane);
+
+            }
+        }
+
         this.visibleTiles.forEach(tile => {
             if (tile.plane == null) {
                 tile.plane = this.mapBuilder.buildMesh(tile);
-                this.ground.add(tile.plane);
+                if (tile.plane != null)
+                    this.ground.add(tile.plane);
             }
-        })
+        });
+
         this.visibleTiles.forEach(tile => tile.show());
 
         if (this.controls.zoomLevel > 10) {
