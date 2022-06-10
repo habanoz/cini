@@ -68,6 +68,8 @@ class MapBuilder3DBufferedMesh extends MapBuilder3DBase {
         const planeGrid = new Mesh(gridPlaneGeometry, this.buildMat(tile));
         const self = this;
 
+        this.doMap(tile, planeGrid, gridPlaneGeometry, this.noBumpTex, null, null);
+
         planeGrid.scale.x = 2 ** (13 - tile.zoom);
         planeGrid.scale.y = 2 ** (13 - tile.zoom);
 
@@ -154,6 +156,7 @@ class MapBuilder3DBufferedMesh extends MapBuilder3DBase {
                 }
             }
 
+            document.removeChild(canvas);
             pos.needsUpdate = true;
             gridPlaneGeometry.computeBoundingBox();
 
