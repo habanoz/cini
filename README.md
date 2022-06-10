@@ -1,5 +1,6 @@
 # three-jsm
-Simple project example using the ES6 modules of three.js.
+
+A threejs based 3D map javascript application to view west of Turkiye.
 
 ---
 
