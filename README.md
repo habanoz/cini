@@ -10,7 +10,7 @@ You can then start a local server by using `npm start` and open `http://localhos
 
 Tile images are not provided. The application does not function without tile images. 
 
-Check demo images see screenshot of the running application.
+Check demo images to see screenshot of the the running application.
 
 ---
 
