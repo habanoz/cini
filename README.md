@@ -11,3 +11,9 @@ You can then start a local server by using `npm start` and open `http://localhos
 Tile images are not provided. The application does not function without tile images. 
 
 Check demo images see screenshot of the running application.
+
+---
+
+## Demo
+
+![Demo Fethiye](/demo/3d_mesh_fethiye.png)
